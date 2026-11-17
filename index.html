@@ -543,6 +543,7 @@ const snd = {
 
 /* ================= 繪圖 ================= */
 const PK = window.PACK, META = PK.meta, IT = PK.items, IMG = {};
+SKINS[0] = META.skin.map(Math.round);   // 第一個膚色就是原圖的膚色
 const HD = META.head, BD = META.body, AN = BD.anchor, Z = BD.zones, SK0 = META.skin;
 const OY = 220, HC_W = HD.size, HC_H = 1800;
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -561,16 +562,18 @@ function loadImages() {
 }
 function faceId(c) {
   const f = PARTS.face.options[c.face].id, ci = PARTS.chin.options[c.chin].id;
-  const shape = (ci === 'double' || ci === 'cleft') ? 'base' : ci;
-  return 'face_' + f + '_' + shape;
+  const shape = (ci === 'double' || ci === 'cleft') ? 'base' : ci, id = 'face_' + f + '_' + shape, m = c.gender === 1 ? '_m' : '';
+  // 優先用正式圖：這個下巴還沒有正式圖時，先用同臉型的正式臉，不退回佔位圖
+  for (const k of [id + m, id, 'face_' + f + '_base' + m, 'face_' + f + '_base']) if (IT[k] && !IT[k].ph) return k;
+  return id;
 }
-function recolorSkin(d, target) {
+function recolorSkin(d, target, lo = 95, span = 55, loose = false) {
   const k0 = target[0] / SK0[0], k1 = target[1] / SK0[1], k2 = target[2] / SK0[2];
   for (let i = 0; i < d.length; i += 4) {
     if (!d[i + 3]) continue;
     const r = d[i], g = d[i + 1], b = d[i + 2];
-    if (r > g && g > b && r - b > 25) {
-      let w = ((r + g + b) / 3 - 95) / 55; if (w <= 0) continue; if (w > 1) w = 1;
+    if (loose ? (r >= g - 3 && g >= b - 3) : (r > g && g > b && r - b > 25)) {   // loose：整塊都是皮膚時，連白色反光一起換
+      let w = ((r + g + b) / 3 - lo) / span; if (w <= 0) continue; if (w > 1) w = 1;
       d[i] = r + (Math.min(255, r * k0) - r) * w; d[i + 1] = g + (Math.min(255, g * k1) - g) * w; d[i + 2] = b + (Math.min(255, b * k2) - b) * w;
     }
   }
@@ -586,7 +589,7 @@ function drawPair(ctx, id, o) {
   }
 }
 function tinted(id, color) {
-  const im = IMG[id], it = IT[id], t = tmpC.getContext('2d');
+  const im = IMG[id], it = IT[id], t = tmpC.getContext('2d', {willReadFrequently: true});
   t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, HC_W, HC_H);
   t.drawImage(im, it.x, it.y + OY, it.w, it.h);
   t.globalCompositeOperation = 'multiply'; t.fillStyle = color; t.fillRect(0, 0, HC_W, HC_H);
@@ -613,7 +616,7 @@ function renderHead(c) {
     s.drawImage(im, 0, 0, im.naturalWidth, hTop * ry, it.x, it.y, it.w, hTop);
     s.drawImage(im, 0, hTop * ry, im.naturalWidth, (it.h - hTop) * ry, it.x, STRETCH_Y - .5, it.w, (it.h - hTop) * lowK + .5);
     s.restore();
-    const d = s.getImageData(0, OY, HC_W, 1000); recolorSkin(d.data, SKINS[c.skin]); s.putImageData(d, 0, OY);
+    const d = s.getImageData(0, OY, HC_W, 1000); recolorSkin(d.data, SKINS[c.skin], 95, 55, true); s.putImageData(d, 0, OY);
     cache.skin = skinKey;
   }
   const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0, HC_W, 1300, 0, 0, HC_W, 1300); h.save(); h.translate(0, OY);
@@ -621,7 +624,11 @@ function renderHead(c) {
   if (cid === 'double' || cid === 'cleft') { const m = IT['chinmark_' + cid]; h.drawImage(IMG['chinmark_' + cid], m.x, m.y + chinY, m.w, m.h); }
   const eyeDy = sl(c.upper, 22) + fy;
   drawPair(h, 'brows_' + PARTS.brows.options[c.brows].id, {dx: sl(c.browDist, 14), dy: eyeDy});
-  drawPair(h, 'eyes_' + PARTS.eyes.options[c.eyes].id, {dy: eyeDy, scale: 1 + sl(c.eyeSize, .15)});
+  // 眼睛圖層邊緣帶一點原本的膚色和腮紅，跟著膚色一起換（只動亮的部分，不動瞳孔和眼線）
+  const t = tmpC.getContext('2d', {willReadFrequently: true}); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, HC_W, 700);
+  drawPair(t, 'eyes_' + PARTS.eyes.options[c.eyes].id, {dy: eyeDy, scale: 1 + sl(c.eyeSize, .15)});
+  if (c.skin) { const ed = t.getImageData(0, 250, HC_W, 340); recolorSkin(ed.data, SKINS[c.skin], 150, 60); t.putImageData(ed, 0, 250); }
+  h.drawImage(tmpC, 0, 0, HC_W, 700, 0, 0, HC_W, 700);
   const nid = 'nose_' + PARTS.nose.options[c.nose].id, n = IT[nid], nK = 1 + sl(c.mid, .15), nW = 1 + sl(c.noseWidth, .18);
   const nTop = n.y + eyeDy * .6;
   h.drawImage(IMG[nid], HD.cx - (HD.cx - n.x) * nW, nTop, n.w * nW, n.h * nK);
@@ -649,14 +656,15 @@ function renderHead(c) {
   }
   if (hid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, usedH(c), 0, 0, HC_W, usedH(c));
 }
+const bodyId = c => c.gender === 1 && IMG.body_base_m ? 'body_base_m' : 'body_base';
 function renderBody(c) {
-  const key = [c.skin, c.top, c.bottom].join('|'); if (cache.body === key) return;
-  const x = bodyC.getContext('2d', {willReadFrequently: true}), it = IT.body_base; x.clearRect(0, 0, BD.w, BD.h);
-  x.drawImage(IMG.body_base, it.x, it.y, it.w, it.h);
+  const key = [bodyId(c), c.skin, c.top, c.bottom].join('|'); if (cache.body === key) return;
+  const x = bodyC.getContext('2d', {willReadFrequently: true}), bid = bodyId(c), it = IT[bid]; x.clearRect(0, 0, BD.w, BD.h);
+  x.drawImage(IMG[bid], it.x, it.y, it.w, it.h);
   const d = x.getImageData(it.x, it.y, it.w, it.h), p = d.data;
   recolorSkin(p, SKINS[c.skin]);
   const top = TOPS[c.top], bot = BOTTOMS[c.bottom], skin = SKINS[c.skin];
-  const hem = Z.hip, legEnd = Z.ankle, shortEnd = Math.round(Z.hip + (Z.ankle - Z.hip) * .3);
+  const hem = Z.hip, legEnd = bot.short ? Z.shoe : Z.ankle, shortEnd = Math.round(Z.hip + (Z.ankle - Z.hip) * .3);
   for (let yy = 0; yy < it.h; yy++) {
     const Y = yy + it.y; if (Y >= legEnd) break;
     let col;
@@ -677,11 +685,11 @@ function renderBody(c) {
 }
 function prepare(c) { renderHead(c); renderBody(c); }
 // 把整個角色畫進 ctx（身體座標）。回傳頭部在身體座標裡的位置，給鏡頭用
-function hKof(c) { return (1 + sl(c.height, .05)) * (c.gender === 1 ? 1.03 : 1); }
+function hKof(c) { return 1 + sl(c.height, .05); }
 // 把整個角色畫進 ctx（身體座標）
 const usedH = c => HAIRS[c.hair].id === 'long' ? 1580 : 1300;
 function drawFigure(ctx, c, part) {
-  const male = c.gender === 1, shK = [0, .08, -.06][c.shoulder], wK = 1 + sl(c.weight, .06), legK = 1 + sl(c.legs, .06), hK = hKof(c);
+  const male = c.gender === 1 && !IMG.body_base_m, shK = [0, .08, -.06][c.shoulder], wK = 1 + sl(c.weight, .06), legK = 1 + sl(c.legs, .06), hK = hKof(c);
   const lift = (Z.ground - Z.hip) * (legK - 1), k = AN.k;
   ctx.save();
   ctx.translate(AN.cx, Z.ground); ctx.scale(hK, hK); ctx.translate(-AN.cx, -Z.ground - lift);
@@ -698,7 +706,7 @@ function drawFigure(ctx, c, part) {
     const xs = xsAt((y0 + y1) / 2), below = y0 >= Z.hip, dy = below ? Z.hip + (y0 - Z.hip) * legK : y0;
     ctx.drawImage(bodyC, 0, y0, BD.w, y1 - y0, AN.cx - AN.cx * xs, dy, BD.w * xs, (y1 - y0) * (below ? legK : 1) + .6);
   };
-  const y0 = IT.body_base.y;
+  const y0 = Math.min(IT.body_base.y, IT[bodyId(c)].y);
   if (!male && shK === 0 && wK === 1) { strip(y0, Z.hip); strip(Z.hip, BD.h); }   // 沒變形就整塊畫，最快
   else { let y = y0; for (; y + 6 <= Z.hip; y += 6) strip(y, y + 6); strip(y, Z.hip); for (y = Z.hip; y < 1400; y += 6) strip(y, Math.min(y + 6, 1400)); strip(1400, BD.h); }
   }
@@ -779,9 +787,9 @@ function swatches(key, list, toCss) {
 }
 function renderPanel() {
   const p = $('panel'); let h = '';
-  if (tab === 'gender') h = '<div class="note">性別只改變身形，不影響看相結果。男生身形目前是用程式調出來的佔位版。</div><div class="grid" style="grid-template-columns:repeat(2,1fr)">' + GENDERS.map((g, i) => '<button class="opt' + (ch.gender === i ? ' on' : '') + '" data-k="gender" data-i="' + i + '"><span style="font-size:17px">' + g + '</span></button>').join('') + '</div>';
+  if (tab === 'gender') h = '<div class="note">性別只改變身形和脖子，不影響看相結果。</div><div class="grid" style="grid-template-columns:repeat(2,1fr)">' + GENDERS.map((g, i) => '<button class="opt' + (ch.gender === i ? ' on' : '') + '" data-k="gender" data-i="' + i + '"><span style="font-size:17px">' + g + '</span></button>').join('') + '</div>';
   else if (tab === 'face') h = optGrid('face', o => 'face_' + o.id + '_base');
-  else if (tab === 'chin') h = optGrid('chin', o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_' + PARTS.face.options[ch.face].id + '_' + o.id);
+  else if (tab === 'chin') h = '<div class="note">下巴的正式圖還沒補上，現在選了會算進看相，畫面先用同臉型的圖。</div>' + optGrid('chin', o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_' + PARTS.face.options[ch.face].id + '_' + o.id);
   else if (['brows', 'eyes', 'nose', 'mouth', 'ears'].includes(tab)) h = optGrid(tab, o => tab + '_' + o.id);
   else if (tab === 'moles') h = '<div class="note">最多選 3 顆，再點一次可以拿掉。</div><div class="grid">' + MOLES.map(m => '<button class="opt' + (ch.moles.includes(m.id) ? ' on' : '') + '" data-mole="' + m.id + '"><span>' + m.name + '</span></button>').join('') + '</div>';
   else if (tab === 'ratio') h = '<div class="note">額頭、鼻子、下巴三段叫「三停」，哪一段最長，就看哪個時期最旺。</div>' + sliderRows('ratio');

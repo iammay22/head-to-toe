@@ -123,6 +123,14 @@ def save_layer(id_, rgb, alpha, space, extra=None, quality=92):
     LOG.append(f'   {id_:28s} {space}  ({x0},{y0}) {x1-x0}x{y1-y0}  {len(buf)//1024+1}KB')
 
 
+FY = (lambda y: y, 1.0)
+
+
+def add_face_svg(id_, x, y, w, h, body, extra=None):
+    f, sy = FY
+    add_svg(id_, 'head', x, f(y), w, h * sy, f'<g transform="translate(0,{f(0):.2f}) scale(1,{sy:.4f})">{body}</g>', extra)
+
+
 def add_svg(id_, space, x, y, w, h, body, extra=None):
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0f}" height="{h:.0f}" '
            f'viewBox="{x:.1f} {y:.1f} {w:.0f} {h:.0f}">{body}</svg>')
@@ -182,7 +190,7 @@ def process_head():
     SKIN = tuple(float(v) for v in np.median(base[300:380, 450:574].reshape(-1, 3), 0).round(1))
     seed = (HS // 2, 400)
     hmask, face = head_mask(base, base_alpha, seed, 12)
-    inner_base = ndi.binary_erosion(face, iterations=20)
+    inner_base = ndi.binary_erosion(face, iterations=8)
     soft = lambda m: ndi.gaussian_filter(m.astype(np.float32), 0.8)
     save_layer('face_oval_base', base, base_alpha * soft(hmask), 'head')
 
@@ -201,7 +209,10 @@ def process_head():
         top_shift = int((np.abs(new_alpha[:500] - base_alpha[:500]) > 0.5).sum())
         note = f'膚色校正 {np.round(gain, 3).tolist() if gain is not None else "略過"}，上半外框差 {top_shift}px'
         kind = name.split('_')[0]
-        if kind == 'face':
+        if name == 'base_m':   # 男生的標準頭（鵝蛋臉）
+            hm, fc = head_mask(new, new_alpha, seed, 12)
+            save_layer('face_oval_base_m', new, new_alpha * soft(hm), 'head', dict(chinY=int(np.where(fc)[0].max()) + 7))
+        elif kind == 'face':
             parts = name.split('_')
             id_ = f'face_{parts[1]}_{parts[3] if len(parts) > 3 else "base"}'
             hm, fc = head_mask(new, new_alpha, seed, 12)
@@ -209,7 +220,7 @@ def process_head():
             save_layer(id_, new, new_alpha * soft(hm), 'head', dict(chinY=int(fy.max()) + 7))
         elif kind in ('eyes', 'brows', 'nose', 'mouth', 'chinmark'):
             _, fc = head_mask(new, new_alpha, seed, 12)
-            inner = inner_base & ndi.binary_erosion(fc, iterations=20)
+            inner = inner_base & ndi.binary_erosion(fc, iterations=8)
             col, al = cut_inner(new, base, inner)
             save_layer(name, col, al, 'head')
         elif kind in ('ears', 'hair', 'acc'):
@@ -219,18 +230,16 @@ def process_head():
             LOG.append(f'!! raw/head/{name}: 看不懂的檔名，略過')
             continue
         LOG.append(f'      └ {note}')
+    eyes = [v for k, v in ITEMS.items() if k.startswith('eyes_') and not v['ph']]
+    geo['eyeY'] = float(np.mean([v['y'] + v['h'] / 2 for v in eyes])) if eyes else 408.0
     return geo, base, base_alpha
 
 
 # ---------- 身體 ----------
-def process_body(head_geo):
-    d = os.path.join(RAW, 'body')
-    files = {os.path.splitext(f)[0]: os.path.join(d, f) for f in sorted(os.listdir(d))}
-    base, alpha = key(load(files.pop('base'), (BW, BH)))
+def prep_body(path, head_geo):
+    base, alpha = key(load(path, (BW, BH)))
     hand_patch = (int(BH * .545), int(BH * .60), int(BW * .262), int(BW * .31))
-    ref = np.median(base[hand_patch[0]:hand_patch[1], hand_patch[2]:hand_patch[3]].reshape(-1, 3), 0)
-    # 把身體的膚色對到頭部標準人
-    base, _ = normalize_skin(base, hand_patch, SKIN)
+    base, _ = normalize_skin(base, hand_patch, SKIN)   # 把身體的膚色對到頭部標準人
     seed = (BW // 2, int(BH * .145))
     hm, face = head_mask(base, alpha, seed, 6)
     ys, xs = np.where(face)
@@ -243,9 +252,9 @@ def process_body(head_geo):
     run = run[(run > cx - BW * .12) & (run < cx + BW * .12)]
     xl, xr = int(run.min()), int(run.max())
     row = base[yn, xl:xr + 1]
-    dark = np.where(lum(row) < 150)[0]
-    ow = max(2, int((dark < 12).sum()))
-    line_col = row[dark].mean(0)
+    dark = np.where(lum(row) < 110)[0]
+    ow = max(2, int((dark < 8).sum()))
+    line_col = row[dark].mean(0) if len(dark) else np.array([94, 58, 54])
     shade = base[yn, int(cx)]
     alpha = np.where(erase, 0, alpha)
     y_up = int(top + (chin - top) * .55)
@@ -257,22 +266,62 @@ def process_body(head_geo):
         fill[-ow:] = line_col
         base[y, seg] = np.where(hole[:, None], fill, base[y, seg])
         alpha[y, seg] = 1
-    save_layer('body_base', base, alpha, 'body')
+    # 衣服上的暖色反光改成中性灰，遊戲才分得出「皮膚」和「衣服」：只有脖子、手、腳踝算皮膚
+    yy, xx = np.mgrid[0:BH, 0:BW]
+    lab, _ = ndi.label((alpha > .5) & (lum(base) > 100))   # 脖子：從下巴下方往外找，碰到領口的線就停
+    neck = ndi.binary_dilation(lab == lab[chin + 25, int(cx)], iterations=2) & (yy < BH * .30) & (np.abs(xx - cx) < BW * .16)
+    neck |= ndi.binary_dilation(hm, iterations=9) & (yy > chin - 12) & (alpha > .3) & (lum(base) > 100)   # 下巴底下那一圈反光
+    skin_zone = neck | ((yy > BH * .525) & (yy < BH * .645) & (np.abs(xx - cx) > BW * .168)) | ((yy > BH * .868) & (yy < BH * .915))
+    cloth = (~skin_zone) & (lum(base) > 105)
+    g = lum(base)[..., None]
+    base = np.where(cloth[..., None], np.clip(g * 1.0, 0, 255), base)
+    # 皮膚區裡偏白的反光改成膚色，換深膚色時才不會留一圈白邊
+    rb = base[..., 0] - base[..., 2]
+    pale = ((skin_zone & (rb >= 5)) | neck) & (lum(base) > 200) & (rb < 45) & (alpha > 0.3)
+    base = np.where(pale[..., None], np.array(SKIN) * np.clip(g / np.mean(SKIN), .9, 1.03), base)
     k = (chin - top) / (head_geo['chin'] - head_geo['top'])
-    anchor = dict(k=round(float(k), 5), cx=round(float(cx), 1), top=top, chin=chin)
+    return base, alpha, dict(k=round(float(k), 5), cx=round(float(cx), 1), top=top, chin=chin), full_base, full_alpha
+
+
+def process_body(head_geo):
+    d = os.path.join(RAW, 'body')
+    files = {os.path.splitext(f)[0]: os.path.join(d, f) for f in sorted(os.listdir(d))}
+    base, alpha, anchor, full_base, full_alpha = prep_body(files.pop('base'), head_geo)
+    save_layer('body_base', base, alpha, 'body')
+    if 'base_m' in files:   # 男生身體，跟女生同一個畫面
+        mb, ma, man, _, _ = prep_body(files.pop('base_m'), head_geo)
+        save_layer('body_base_m', mb, ma, 'body')
+        LOG.append(f'      └ 頭的位置：女 {anchor}，男 {man}（遊戲用女生的）')
+    hand_patch = (int(BH * .545), int(BH * .60), int(BW * .262), int(BW * .31))
     for name, path in files.items():
         new, na = key(load(path, (BW, BH)))
         new, _ = normalize_skin(new, hand_patch, SKIN)
         kind = name.split('_')[0]
-        if kind in ('hair', 'top', 'bottom', 'acc', 'dress'):
-            save_layer(name if kind != 'hair' else name + '_front', new,
-                       cut_outer(new, na, full_base, full_alpha), 'body')
+        if kind in ('top', 'bottom', 'acc', 'dress'):
+            save_layer(name, new, cut_outer(new, na, full_base, full_alpha), 'body')
         else:
             LOG.append(f'!! raw/body/{name}: 看不懂的檔名，略過')
-    # 身體分區（給肩寬、上下身比例、佔位衣服用），用比例估
-    zones = dict(neck=chin, shoulder=int(BH * .235), hip=int(BH * .545), ankle=int(BH * .874), shoe=int(BH * .905), ground=int(BH * .972))
+    zones = dict(neck=anchor['chin'], shoulder=int(BH * .235), hip=int(BH * .545), ankle=int(BH * .874), shoe=int(BH * .905), ground=int(BH * .972))
     return anchor, zones
 
+
+def process_ui():
+    """手部特寫：去背、裁切、縮小，只當縮圖用。"""
+    d = os.path.join(RAW, 'ui')
+    if not os.path.isdir(d):
+        return
+    for f in sorted(os.listdir(d)):
+        name = os.path.splitext(f)[0]
+        im = Image.open(os.path.join(d, f)).convert('RGB')
+        im.thumbnail((480, 480), Image.LANCZOS)
+        a, al = key(np.asarray(im).astype(np.float32))
+        ys, xs = np.where(al > .5)
+        rgba = np.dstack([np.clip(a, 0, 255), al * 255]).astype(np.uint8)[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        path = os.path.join(OUT, name + '.webp')
+        Image.fromarray(rgba, 'RGBA').save(path, 'WEBP', quality=90, method=6)
+        buf = open(path, 'rb').read()
+        ITEMS[name] = dict(s='ui', x=0, y=0, w=rgba.shape[1], h=rgba.shape[0], ph=False, src='data:image/webp;base64,' + base64.b64encode(buf).decode())
+        LOG.append(f'   {name:28s} ui    {rgba.shape[1]}x{rgba.shape[0]}  {len(buf)//1024+1}KB')
 
 # ---------- SVG 佔位圖 ----------
 def sm(a, b, t):
@@ -364,14 +413,14 @@ def placeholder_features(geo):
                  f'<path d="M {-w},0 Q 0,{1.5*h} {w},0" fill="none" stroke="#3b2224" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>'
                  f'<path d="M {-w-2},1 Q 0,{-2*h} {w},0 L {w+11},-5" fill="none" stroke="#3b2224" stroke-width="{lid}" stroke-linecap="round" stroke-linejoin="round"/>'
                  f'<path d="M {-w*.6:.0f},{-h-12} Q 0,{-h-22} {w*.8:.0f},{-h-10}" fill="none" stroke="#8a5a52" stroke-width="2.5" stroke-linecap="round"/></g>')
-        add_svg('eyes_' + name, 'head', cx - 230, 340, 460, 135, mirror_pair(local, 360, 408, cx))
+        add_face_svg('eyes_' + name, cx - 230, 340, 460, 135, mirror_pair(local, 360, 408, cx))
     # 眉毛（路徑、粗細、顏色）
     brows = {'willow': ('M -66,8 Q 0,-16 72,4', 7, LINE), 'crescent': ('M -62,12 Q 6,-34 70,10', 5.5, LINE),
              'droop': ('M -64,-8 Q 0,-8 72,18', 9, LINE), 'thick': ('M -66,4 Q 0,-10 70,2', 19, LINE),
              'sparse': ('M -60,4 Q 0,-8 66,3', 6, '#b9958b')}
     for name, (dpath, sw, col) in brows.items():
         local = f'<path d="{dpath}" fill="none" stroke="{col}" stroke-width="{sw}" stroke-linecap="round"/>'
-        add_svg('brows_' + name, 'head', cx - 240, 295, 480, 100, mirror_pair(local, 370, 346, cx))
+        add_face_svg('brows_' + name, cx - 240, 295, 480, 100, mirror_pair(local, 370, 346, cx))
     # 鼻子（都以 (cx,520) 為鼻頭附近）
     L = lambda d, sw=5: f'<path d="{d}" fill="none" stroke="{LINE}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"/>'
     c = cx
@@ -384,7 +433,7 @@ def placeholder_features(geo):
         'upturned': L(f'M {c-22},528 Q {c},510 {c+22},528', 5) + f'<ellipse cx="{c-11}" cy="537" rx="5" ry="3.5" fill="{LINE}"/><ellipse cx="{c+11}" cy="537" rx="5" ry="3.5" fill="{LINE}"/>',
     }
     for name, body in noses.items():
-        add_svg('nose_' + name, 'head', cx - 70, 415, 140, 165, body)
+        add_face_svg('nose_' + name, cx - 70, 415, 140, 165, body)
     # 嘴（半寬、上唇厚、下唇厚、嘴角上揚、唇峰）
     mouths = {'smile': (58, 9, 13, 12, 3), 'full': (52, 17, 22, 0, 4), 'thin': (54, 5, 6, 0, 2),
               'wide': (78, 9, 13, 2, 3), 'cherry': (30, 11, 14, 0, 4), 'bow': (54, 12, 13, 0, 9)}
@@ -395,7 +444,7 @@ def placeholder_features(geo):
         lower = f'M {c-w},{y-lift} Q {c},{y+5} {c+w},{y-lift} Q {c},{y+lo*2} {c-w},{y-lift} Z'
         body = (f'<path d="{upper}" fill="#d9857e"/><path d="{lower}" fill="#e69c93"/>'
                 + L(f'M {c-w-3},{y-lift-1} Q {c},{y+6} {c+w+3},{y-lift-1}', 4.5))
-        add_svg('mouth_' + name, 'head', cx - 100, 580, 200, 95, body)
+        add_face_svg('mouth_' + name, cx - 100, 580, 200, 95, body)
     # 下巴疊加層（以下巴底為 y=0，遊戲會依臉型的 chinY 定位）
     add_svg('chinmark_double', 'head', cx - 110, -70, 220, 60,
             L(f'M {c-84},-58 Q {c},-6 {c+84},-58', 4.5).replace(LINE, '#b9776a'), dict(rel='chin'))
@@ -413,7 +462,7 @@ def placeholder_ears(geo, hw_ear):
         inner = f'M {8*sx:.0f},{-34*sy:.0f} C {34*sx:.0f},{-34*sy:.0f} {36*sx:.0f},{4*sy:.0f} {14*sx:.0f},{22*sy:.0f}'
         local = (f'<path d="{p}" fill="{skin}" stroke="{LINE}" stroke-width="7" stroke-linejoin="round"/>'
                  f'<path d="{inner}" fill="none" stroke="#b9776a" stroke-width="4" stroke-linecap="round"/>')
-        add_svg('ears_' + name, 'head', geo['cx'] - hw_ear - 110, 290, (hw_ear + 110) * 2, 300,
+        add_face_svg('ears_' + name, geo['cx'] - hw_ear - 110, 290, (hw_ear + 110) * 2, 300,
                 mirror_pair(local, geo['cx'] - hw_ear + 14, 448 + dy, geo['cx']), dict(behind=True))
 
 
@@ -481,13 +530,17 @@ def main():
             os.remove(os.path.join(OUT, f))
     geo, _, _ = process_head()
     anchor, zones = process_body(geo)
+    process_ui()
+    global FY
+    sy = (geo['chin'] - geo['eyeY']) / (745 - 408)   # 佔位圖原本照舊標準人畫的，換算到新標準人的五官位置
+    FY = (lambda y: geo['eyeY'] + (y - 408) * sy, sy)
     face_meta = placeholder_faces(geo)
     hw_ear = face_meta['face_oval_base']['hwEar']
     placeholder_features(geo)
     placeholder_ears(geo, hw_ear)
     placeholder_hair(geo)
     placeholder_ui()
-    meta = dict(skin=list(SKIN), head=dict(size=HS, top=geo['top'], chin=geo['chin'], cx=geo['cx'], hwEar=hw_ear),
+    meta = dict(skin=list(SKIN), head=dict(size=HS, top=geo['top'], chin=geo['chin'], cx=geo['cx'], hwEar=hw_ear, eyeY=round(geo['eyeY'], 1)),
                 body=dict(w=BW, h=BH, anchor=anchor, zones=zones), faces=face_meta)
     manifest = {k: {kk: vv for kk, vv in v.items() if kk != 'src'} for k, v in ITEMS.items()}
     json.dump(dict(meta=meta, items=manifest), open(os.path.join(OUT, 'manifest.json'), 'w'), ensure_ascii=False, indent=1)

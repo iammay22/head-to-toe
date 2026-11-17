@@ -22,8 +22,8 @@ def figure(face,parts,tone):
     c=Image.new('RGBA',(b['w'],b['h']),(0,0,0,0)); c.alpha_composite(recolor(layer('body_base',(b['w'],b['h'])),tone))
     h=head(face,parts,tone); k=an['k']; s=round(1024*k); hs=h.resize((s,s),Image.LANCZOS)
     c.alpha_composite(hs,(round(an['cx']-hd['cx']*k),round(an['top']-hd['top']*k))); return c,h
-combos=[('face_oval_base',['brows_flat','eyes_peach'],meta['skin']),('face_square_base',['brows_sword','eyes_phoenix'],(236,188,150)),
-        ('face_oval_round',['brows_flat','eyes_phoenix'],(198,140,100)),('face_oval_pointed',['brows_sword','eyes_peach'],(140,92,62))]
+combos=[('face_oval_base',['eyes_peach'],meta['skin']),('face_square_base',['eyes_phoenix'],(236,188,150)),
+        ('face_round_base',['eyes_apricot'],(198,140,100)),('face_long_base',['eyes_narrow'],(140,92,62))]
 W=420; out=Image.new('RGB',(W*4,1150),(253,244,240))
 for i,(f,p,t) in enumerate(combos):
     fig,h=figure(f,p,t)
