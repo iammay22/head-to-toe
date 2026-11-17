@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>從頭相到腳</title>
+<style>
+:root{
+  --bg:#f7e7ef; --card:#fffaf5; --text:#4a3b47; --line:#5e3a36;
+  --gold:#c9a24b; --blue:#6b9fd6; --pink:#e88aa8; --mint:#bfe3d0; --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+body{display:flex;flex-direction:column;min-height:100dvh;height:100dvh;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;flex:none}
+header h1{font-size:18px;letter-spacing:2px}
+#mute{width:40px;height:40px;border-radius:50%;background:var(--card);font-size:18px}
+main{flex:1;position:relative;min-height:0}
+.screen{display:none;position:absolute;inset:0}
+.screen.active{display:flex;flex-direction:column}
+footer{text-align:center;font-size:12px;opacity:.7;padding:6px;flex:none}
+.btn{display:block;width:100%;padding:14px;border:2px solid var(--gold);background:#fff;border-radius:14px;font-size:17px;font-weight:600}
+.btn.main{background:var(--pink);border-color:var(--pink);color:#fff}
+.btn:disabled{opacity:.5}
+
+/* 首頁 */
+#home{align-items:center;justify-content:center;padding:24px;gap:14px;text-align:center}
+#home .logo{font-size:44px;font-weight:800;letter-spacing:6px;line-height:1.25}
+#home .logo span{color:var(--pink)}
+#home p{line-height:1.7;max-width:320px}
+#home .menu{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;margin-top:10px}
+#loading{font-size:14px;opacity:.7}
+
+/* 捏人 */
+#make .stage{flex:1;min-height:0;position:relative;background:linear-gradient(#fff6f0,#fde9ef);border-radius:var(--radius);margin:0 10px;overflow:hidden}
+#view{width:100%;height:100%;display:block}
+.chips{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;font-size:12px;pointer-events:none}
+.chips span{background:rgba(255,250,245,.9);border-radius:10px;padding:3px 8px;align-self:flex-start}
+.zoom{position:absolute;right:8px;top:8px;background:rgba(255,250,245,.9);border-radius:12px;padding:6px 10px;font-size:13px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;flex:none;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;padding:8px 14px;border-radius:999px;background:var(--card);font-size:15px;min-height:40px}
+.tabs button.on{background:var(--text);color:#fff}
+.panel{height:32dvh;flex:none;overflow-y:auto;padding:2px 10px 8px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.opt{position:relative;background:var(--card);border:2px solid transparent;border-radius:14px;padding:6px 4px 8px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:14px}
+.opt.on{border-color:var(--pink);background:#fff}
+.opt img{width:100%;height:44px;object-fit:contain;pointer-events:none}
+.opt .ph{position:absolute;right:4px;top:3px;font-size:10px;background:var(--mint);border-radius:6px;padding:0 4px}
+.opt small{font-size:11px;opacity:.65}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #d9c7cf}
+.group{margin:8px 2px 6px;font-size:13px;opacity:.75}
+.slider{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:8px 12px;margin-bottom:8px}
+.slider label{width:5.5em;font-size:14px;flex:none}
+.slider input{flex:1;height:32px;accent-color:var(--pink)}
+.slider small{width:4.5em;font-size:11px;opacity:.6;text-align:right;flex:none}
+.note{font-size:12px;opacity:.7;margin:6px 2px;line-height:1.6}
+.bar{display:flex;gap:8px;padding:8px 10px;flex:none}
+.bar .btn{padding:12px 6px;flex:1;width:auto}
+.bar .btn.main{flex:1.6}
+
+/* 看相演出 */
+#watch{background:rgba(74,59,71,.92);color:#fff;align-items:center;justify-content:center;gap:10px}
+#watchView{width:min(86vw,380px);height:62dvh;background:linear-gradient(#fff6f0,#fde9ef);border-radius:var(--radius)}
+#watch .say{display:flex;align-items:center;gap:10px;font-size:16px;min-height:60px}
+#watch .say img{width:56px;height:56px}
+#watch button{color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:999px;padding:8px 22px}
+
+/* 結果 */
+#result{overflow-y:auto;padding:4px 14px 20px;display:none}
+#result.active{display:block}
+#result .title{text-align:center;margin:6px 0 10px}
+#result .title small{display:block;font-size:15px;letter-spacing:4px;color:var(--gold)}
+#result .title b{font-size:34px;letter-spacing:3px}
+#cardImg{display:block;width:62%;max-width:300px;margin:0 auto 12px;border-radius:14px;box-shadow:0 6px 20px rgba(74,59,71,.18)}
+.box{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:10px;line-height:1.75;font-size:15px}
+.box h3{font-size:14px;color:var(--gold);margin-bottom:4px;letter-spacing:2px}
+.luck{display:grid;grid-template-columns:3em 6em 1fr;gap:2px 6px;align-items:baseline}
+.luck .st{color:var(--gold);letter-spacing:1px;white-space:nowrap}
+.luck .tx{font-size:13.5px}
+details summary{font-size:15px;font-weight:600;min-height:32px;display:flex;align-items:center}
+.read{display:grid;grid-template-columns:5.2em 1fr;gap:4px 8px;font-size:14px;margin-top:6px}
+.read b{font-weight:600}
+.read img{width:64px;height:64px;grid-column:1/3}
+#result .acts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+
+.sheet{position:fixed;inset:0;background:rgba(74,59,71,.5);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet.on{display:flex}
+.sheet .in{background:var(--bg);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:10px 4px;border-radius:12px;background:var(--card);border:2px solid transparent;font-size:15px;min-height:44px}.seg button.on{border-color:var(--pink);background:#fff}
+input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;font:inherit;font-size:16px;background:#fff;color:var(--text)}
+.linkrow{display:flex;gap:6px}.linkrow input{flex:1;font-size:13px;min-width:0}
+#invite{align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;overflow-y:auto}
+#inviteView{width:min(60vw,220px);height:36dvh;flex:none}
+#pair,#dex{overflow-y:auto;padding:4px 14px 20px;display:none}#pair.active,#dex.active{display:block}
+#pairView{width:100%;height:40dvh;display:block;background:linear-gradient(#fff6f0,#fde9ef);border-radius:var(--radius)}
+.names{display:grid;grid-template-columns:1fr 1fr;text-align:center;font-weight:700;margin:8px 0 0}.names small{display:block;font-weight:400;font-size:12px;opacity:.7}
+.score{text-align:center;margin:2px 0}.score b{font-size:68px;color:var(--pink);font-variant-numeric:tabular-nums}.score span{font-size:20px;margin-left:4px}
+.rel{text-align:center;font-size:28px;font-weight:800;letter-spacing:3px;margin-bottom:8px}
+.stamp{display:none;margin:4px auto 8px;width:max-content;border:3px solid #c0504d;color:#c0504d;padding:4px 14px;border-radius:8px;transform:rotate(-8deg);font-weight:800;letter-spacing:4px;font-size:20px}
+.stamp.on{display:block;animation:stamp .35s ease-out}
+@keyframes stamp{from{transform:rotate(-8deg) scale(2.4);opacity:0}to{transform:rotate(-8deg) scale(1);opacity:1}}
+#lnView{width:100%;height:210px;display:block;border-radius:12px;background:linear-gradient(#fff6f0,#fde9ef);margin-top:4px}
+.ln{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}.ln input{flex:1;accent-color:var(--gold);height:32px}.ln b{width:4em;text-align:right;font-size:15px}
+.dexgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dexitem{background:var(--card);border-radius:12px;padding:8px 6px;font-size:13px;text-align:center;min-height:64px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.dexitem.lock{opacity:.45}.dexitem.lock img{filter:grayscale(1)}.dexitem img{height:38px;object-fit:contain}.dexitem small{font-size:11px;opacity:.75;line-height:1.45}
+.dextop{display:flex;align-items:center;gap:10px;margin:4px 0 8px}
+@media (min-width:820px){
+  body{max-width:1080px;margin:0 auto}
+  #make.active{display:grid;grid-template-columns:1fr 420px;grid-template-rows:auto 1fr auto;column-gap:6px}
+  #make .stage{grid-row:1/4;margin:0 0 8px 10px}
+  .panel{height:auto;min-height:0}
+  #result{max-width:560px;margin:0 auto}
+}
+</style>
+</head>
+<body>
+<header><h1>從頭相到腳</h1><button id="mute" aria-label="聲音開關">🔔</button></header>
+<main>
+  <section class="screen active" id="home">
+    <div class="logo">從頭<span>相</span>到腳</div>
+    <p>捏一個從頭到腳的角色，讓相師傅看看這張臉、這副身形藏了什麼運。</p>
+    <div class="menu">
+      <button class="btn main" id="startBtn" disabled>開始捏人</button>
+      <button class="btn" disabled>🔒 相士攤位（之後開放）</button>
+      <button class="btn" id="dexBtn" disabled>🔒 圖鑑（看相一次後開放）</button>
+    </div>
+    <div id="loading">素材準備中…</div>
+  </section>
+
+  <section class="screen" id="make">
+    <div class="stage">
+      <canvas id="view"></canvas>
+      <div class="chips" id="chips"></div>
+      <button class="zoom" id="zoomBtn">看全身</button>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="panel" id="panel"></div>
+    <div class="bar">
+      <button class="btn" id="randBtn">隨機</button>
+      <button class="btn" id="undoBtn">復原</button>
+      <button class="btn main" id="readBtn">看相</button>
+    </div>
+  </section>
+
+  <section class="screen" id="watch">
+    <canvas id="watchView"></canvas>
+    <div class="say"><img id="masterImg" alt=""><span id="sayText">讓我看看…</span></div>
+    <button id="skipBtn">略過</button>
+  </section>
+
+  <section class="screen" id="result">
+    <div class="title"><small id="rPrefix"></small><b id="rName"></b><div class="note" id="rHidden"></div></div>
+    <button class="btn main" id="pairGo" style="display:none;margin-bottom:12px">看合盤結果</button>
+    <img id="cardImg" alt="結果卡">
+    <div class="note" style="text-align:center">長按圖片也可以直接存下來</div>
+    <div class="box"><h3>總評</h3><div id="rSummary"></div></div>
+    <div class="box"><h3>四運</h3><div class="luck" id="rLuck"></div></div>
+    <div class="box"><h3>發運時期</h3><div id="rPeriod"></div></div>
+    <div class="box"><h3>流年</h3><canvas id="lnView"></canvas>
+      <div class="ln"><span>15</span><input type="range" id="lnAge" min="15" max="75" step="1" value="25"><span>75</span><b id="lnAgeTx">25 歲</b></div>
+      <div id="lnText" style="font-size:14.5px"></div></div>
+    <div class="box"><details><summary>各部位怎麼看</summary><div class="read" id="rRead"></div></details></div>
+    <div class="note" id="rJoke"></div>
+    <div class="acts">
+      <button class="btn main" id="saveBtn">存結果卡</button>
+      <button class="btn" id="pairBtn">找人合盤</button>
+      <button class="btn" id="backBtn">回去改</button>
+    </div>
+  </section>
+
+  <section class="screen" id="invite">
+    <canvas id="inviteView"></canvas>
+    <h2 id="invTitle" style="font-size:24px"></h2>
+    <div id="invRel"></div>
+    <p style="line-height:1.7;max-width:300px">對方的稱號先蓋著。你捏完自己、看完相，就會看到你們合不合。</p>
+    <input class="txt" id="invNick" maxlength="8" placeholder="你的暱稱（可以不填）" style="max-width:320px">
+    <button class="btn main" id="invStart" style="max-width:320px">開始捏我自己</button>
+  </section>
+
+  <section class="screen" id="pair">
+    <div class="title" style="text-align:center;margin:6px 0"><small style="color:var(--gold);letter-spacing:4px" id="pRel"></small></div>
+    <canvas id="pairView"></canvas>
+    <div class="names"><div><span id="pNameA"></span><small id="pTitleA"></small></div><div><span id="pNameB"></span><small id="pTitleB"></small></div></div>
+    <div class="score"><b id="pScore">10</b><span>分</span></div>
+    <div class="rel" id="pTitle"></div>
+    <div class="stamp" id="pStamp">此盤稀有</div>
+    <div class="note" id="pQuip" style="text-align:center"></div>
+    <div class="box"><h3>亮點</h3><div id="pHigh"></div></div>
+    <div class="box"><h3>磨合點</h3><div id="pLow"></div></div>
+    <div class="acts">
+      <button class="btn main" id="pSave">存雙人卡</button>
+      <button class="btn" id="pReturn">傳回給對方</button>
+      <div class="linkrow" id="pLinkRow" style="display:none"><input class="txt" id="pLink" readonly></div>
+      <div class="note" id="pMsg"></div>
+      <button class="btn" id="pBack">回我的結果</button>
+      <button class="btn" id="pMine">我也來捏一個</button>
+      <button class="btn" id="pHome">回首頁</button>
+    </div>
+  </section>
+
+  <section class="screen" id="dex">
+    <div class="dextop"><button class="btn" id="dexBack" style="width:auto;padding:8px 14px">← 返回</button><h2 style="font-size:20px">圖鑑</h2></div>
+    <div class="tabs" id="dexTabs" style="padding:0 0 8px"></div>
+    <div id="dexBody"></div>
+  </section>
+</main>
+<div class="sheet" id="pairSheet"><div class="in">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">找人合盤</b><button id="sheetClose" style="font-size:22px;width:40px;height:40px">×</button></div>
+  <div class="note" style="margin:0">傳連結給對方，對方捏完角色，就能看到你們合不合。</div>
+  <div class="group" style="margin:0">你們的關係</div>
+  <div class="seg" id="relSeg"></div>
+  <input class="txt" id="nickIn" maxlength="8" placeholder="你的暱稱（可以不填）">
+  <button class="btn main" id="makeLink">產生連結</button>
+  <div class="linkrow" id="linkRow" style="display:none"><input class="txt" id="linkBox" readonly><button class="btn" id="copyLink" style="width:auto;padding:10px 14px">複製</button></div>
+  <div class="note" id="sheetMsg" style="margin:0"></div>
+</div></div>
+<footer>作者：may22</footer>
+
+<script src="assets/pack.js"></script>
+<script>
+'use strict';
+/* ================= 資料表（改文案、加選項只動這裡） ================= */
+const SAVE_KEY = 'mianxiang-save-v1';
+const ENDPOINT = ''; // 填入 Apps Script 網址；留空就不送資料
+const FORT = ['財', '情', '業', '緣'];
+const FORT_NAME = ['財運', '感情', '事業', '人緣'];
+// s = [財, 情, 業, 緣] 加分
+const PARTS = {
+  face: {label: '臉型', options: [
+    {id: 'oval',   name: '鵝蛋臉',   el: '鵝蛋臉', text: '各方面均衡，容易被信任', s: [1,1,0,1]},
+    {id: 'square', name: '金形方臉', el: '金形', text: '做事有決斷力，說到做到', s: [0,0,2,1]},
+    {id: 'long',   name: '木形長臉', el: '木形', text: '有理想、愛學習，越學越有料', s: [0,1,1,1]},
+    {id: 'round',  name: '水形圓臉', el: '水形', text: '圓融好相處，走到哪都有朋友', s: [1,0,0,2]},
+    {id: 'fire',   name: '火形尖臉', el: '火形', text: '反應快、點子多，熱情來得快', s: [0,2,1,0]},
+    {id: 'earth',  name: '土形厚臉', el: '土形', text: '穩重可靠，福氣越後面越厚', s: [2,0,0,1]},
+  ]},
+  chin: {label: '下巴', options: [
+    {id: 'round',    name: '方圓厚實', text: '晚年有靠山，家庭運穩', s: [1,0,0,1]},
+    {id: 'pointed',  name: '尖下巴',   text: '想像力豐富，很有藝術感', s: [0,1,1,0]},
+    {id: 'protrude', name: '前凸下巴', text: '意志力強，不輕易放棄', s: [0,0,2,0]},
+    {id: 'double',   name: '雙下巴',   text: '有福氣，生活過得舒服', s: [2,0,0,0]},
+    {id: 'cleft',    name: '美人溝',   text: '很有魅力，讓人忘不了', s: [0,2,0,0]},
+  ]},
+  brows: {label: '眉', options: [
+    {id: 'flat',     name: '一字眉', text: '個性直率，話不繞彎', s: [0,0,1,1]},
+    {id: 'sword',    name: '劍眉',   text: '有魄力，適合帶頭', s: [0,0,2,0]},
+    {id: 'willow',   name: '柳葉眉', text: '溫柔有異性緣', s: [0,2,0,0]},
+    {id: 'crescent', name: '新月眉', text: '細膩體貼，察言觀色', s: [0,1,0,1]},
+    {id: 'droop',    name: '八字眉', text: '隨和好說話，大家都想找你聊', s: [0,0,0,2]},
+    {id: 'thick',    name: '濃粗眉', text: '重義氣，會罩朋友', s: [0,0,1,1]},
+    {id: 'sparse',   name: '疏淡眉', text: '獨立自主，靠自己打出一片天', s: [1,0,1,0]},
+  ]},
+  eyes: {label: '眼', options: [
+    {id: 'peach',    name: '桃花眼', text: '眼神會放電，桃花不斷', s: [0,2,0,0]},
+    {id: 'phoenix',  name: '鳳眼',   text: '有氣勢，天生的主管臉', s: [0,0,2,0]},
+    {id: 'apricot',  name: '杏眼',   text: '真誠直接，讓人放心', s: [0,0,0,2]},
+    {id: 'narrow',   name: '細長眼', text: '冷靜會觀察，理財有一套', s: [1,0,1,0]},
+    {id: 'sanpaku',  name: '三白眼', text: '主見很強，認定了就不回頭', s: [0,0,2,0]},
+    {id: 'droopy',   name: '下垂眼', text: '溫和好親近，很會照顧人', s: [0,1,0,1]},
+    {id: 'upturned', name: '上揚眼', text: '積極主動，喜歡就會說', s: [0,1,1,0]},
+  ]},
+  nose: {label: '鼻', options: [
+    {id: 'gall',     name: '懸膽鼻', text: '鼻頭飽滿，守得住錢', s: [3,0,0,0]},
+    {id: 'garlic',   name: '蒜頭鼻', text: '肉多有財庫，待人大方', s: [2,0,0,1]},
+    {id: 'hook',     name: '鷹勾鼻', text: '精明會算，談判不吃虧', s: [1,0,1,0]},
+    {id: 'straight', name: '挺直鼻', text: '自尊心強，做事要求高', s: [0,0,2,0]},
+    {id: 'button',   name: '小巧鼻', text: '可愛有親和力', s: [0,1,0,1]},
+    {id: 'upturned', name: '朝天鼻', text: '大方愛請客，朋友很多', s: [0,0,0,2]},
+  ]},
+  mouth: {label: '嘴', options: [
+    {id: 'smile',  name: '嘴角上揚', text: '樂觀愛笑，帶來一團好心情', s: [0,0,0,2]},
+    {id: 'full',   name: '厚唇',     text: '重感情，對喜歡的人很專一', s: [0,2,0,0]},
+    {id: 'thin',   name: '薄唇',     text: '口才好，說話有重點', s: [0,0,2,0]},
+    {id: 'wide',   name: '大嘴',     text: '氣度大，敢接大任務', s: [1,0,1,0]},
+    {id: 'cherry', name: '櫻桃小嘴', text: '細心懂得細節', s: [1,1,0,0]},
+    {id: 'bow',    name: '菱角嘴',   text: '口福好，有吃的就有你', s: [1,0,0,1]},
+  ]},
+  ears: {label: '耳', options: [
+    {id: 'flat',       name: '貼腦耳', text: '低調穩健，默默打拼', s: [1,0,0,1]},
+    {id: 'fortune',    name: '福耳',   text: '福氣滿滿，貴人多', s: [2,0,0,1]},
+    {id: 'protruding', name: '招風耳', text: '有主見，不跟風', s: [0,0,2,0]},
+    {id: 'high',       name: '高位耳', text: '聰明早發，很早就被看見', s: [0,0,2,0]},
+    {id: 'small',      name: '小耳',   text: '心思細，感受力強', s: [0,2,0,0]},
+  ]},
+  shoulder: {label: '肩', options: [
+    {id: 'level', name: '平肩', text: '平穩均衡', s: [1,0,0,1]},
+    {id: 'wide',  name: '寬肩', text: '有擔當，扛得起責任', s: [0,0,2,0]},
+    {id: 'slope', name: '溜肩', text: '溫柔細膩', s: [0,2,0,0]},
+  ]},
+  hand: {label: '手', options: [
+    {id: 'soft',    name: '手掌厚軟', text: '握得住錢', s: [2,0,0,0]},
+    {id: 'slender', name: '手指修長', text: '有藝術天分', s: [0,1,1,0]},
+    {id: 'square',  name: '手掌方正', text: '務實肯做', s: [0,0,2,0]},
+    {id: 'small',   name: '手小巧',   text: '靈巧會照顧人', s: [0,1,0,1]},
+  ]},
+  stance: {label: '站姿', options: [
+    {id: 'upright', name: '抬頭挺胸', text: '自信大方', s: [0,0,1,1]},
+    {id: 'casual',  name: '三七步',   text: '隨性好相處', s: [0,0,0,2]},
+    {id: 'crossed', name: '雙手抱胸', text: '謹慎有防備心', s: [1,0,1,0]},
+    {id: 'pocket',  name: '手插口袋', text: '酷酷的，很有吸引力', s: [0,2,0,0]},
+  ]},
+};
+const MOLES = [
+  {id: 'brow',  name: '眉中', text: '草裡藏珠，有藏著的才華，遇到機會就發光', s: [0,0,1,0]},
+  {id: 'tear',  name: '眼尾下', text: '淚痣，感性浪漫，容易心動', s: [0,1,0,0]},
+  {id: 'nose',  name: '鼻頭', text: '財運加持', s: [1,0,0,0]},
+  {id: 'mouth', name: '嘴角', text: '食祿痣，口福好，人緣也好', s: [0,0,0,1]},
+  {id: 'chin',  name: '下巴', text: '有置產運', s: [1,0,0,0]},
+  {id: 'lobe',  name: '耳垂', text: '福氣跟著你走', s: [0,0,0,1]},
+];
+const SLIDERS = [
+  {id: 'upper',     name: '額頭高度', hint: '上停', tab: 'ratio'},
+  {id: 'mid',       name: '鼻子長度', hint: '中停', tab: 'ratio'},
+  {id: 'lower',     name: '下巴長度', hint: '下停', tab: 'ratio'},
+  {id: 'browDist',  name: '眉距',     hint: '印堂', tab: 'ratio'},
+  {id: 'eyeSize',   name: '眼睛大小', hint: '只影響畫面', tab: 'ratio'},
+  {id: 'noseWidth', name: '鼻翼寬窄', hint: '財庫', tab: 'ratio'},
+  {id: 'mouthSize', name: '嘴巴大小', hint: '只影響畫面', tab: 'ratio'},
+  {id: 'featY',     name: '五官位置', hint: '只影響畫面', tab: 'ratio'},
+  {id: 'legs',      name: '上下身比例', hint: '左：上身長', tab: 'body'},
+  {id: 'height',    name: '高矮', hint: '只影響畫面', tab: 'body'},
+  {id: 'weight',    name: '胖瘦', hint: '只影響畫面', tab: 'body'},
+];
+const TITLES = {
+  金形:   ['金庫守門人', '鐵漢柔情', '開疆將軍', '一諾千金'],
+  木形:   ['書生致富', '文青戀人', '青雲直上', '春風桃李'],
+  水形:   ['圓滾招財', '暖心湯圓', '以柔克剛', '人見人愛'],
+  火形:   ['火速發財', '熱戀體質', '點子王', '派對核心'],
+  土形:   ['地主之相', '長情守護者', '穩扎穩打', '眾人靠山'],
+  鵝蛋臉: ['福氣均衡', '天生主角', '全能優等生', '萬人迷'],
+};
+// 總評：SUMMARY[主運][第二高的運]
+const SUMMARY = {
+  0: {1: '你的相是先顧好荷包、再顧好心上人的那種。錢到你手上會留下來，對喜歡的人也捨得花。提醒一句，別把請客當成唯一的示好方式。',
+      2: '這張臉寫著會賺也會存。事業給你舞台，財庫幫你把成果留住，中年以後會越過越寬裕。偶爾也讓自己花點錢享受，錢是拿來用的。',
+      3: '財運跟人緣在你身上是連在一起的，很多賺錢的機會是朋友帶來的。把人照顧好，錢自己會找上門。借錢給朋友之前還是先想一下。'},
+  1: {0: '你在感情裡很有分量，被你喜歡上的人通常過得不錯。你付出感情，也付得起生活，談的是踏實的戀愛。記得偶爾也讓對方照顧你。',
+      2: '你談戀愛跟拚事業都很投入，愛上了會很認真。另一半常常也是你的戰友，兩個人一起往前走最對味。忙起來的時候，記得回訊息。',
+      3: '你身邊從來不缺喜歡你的人，朋友多，桃花也多。你讓人覺得舒服，所以大家都想靠近。要分清楚誰是朋友、誰是在追你，免得誤會。'},
+  2: {0: '你的相是做事的相，而且做了會有回報。該拚的時候你不會手軟，成果也大多換得成實際的收入。別忘了休息，身體是你最大的本錢。',
+      1: '工作上你很有企圖心，感情上你其實也很熱。你想要的是一個看得懂你在忙什麼的人。事業起飛的那幾年，記得留一點時間給在乎你的人。',
+      3: '你有做事的能力，也有讓人願意幫你的人緣，這兩樣湊在一起很適合帶團隊。很多機會是別人主動推給你的，接下來之前先想想自己吃不吃得消。'},
+  3: {0: '你的人緣好到會變成財路。大家有好康會想到你，要合作也先找你。你只要記得一件事，人情跟帳目分開算，交情才走得久。',
+      1: '你走到哪裡都受歡迎，也很容易被人放在心上。你懂得聽人說話，這比會說話還難得。對每個人都好的同時，把最好的留給最重要的那一個。',
+      2: '你是那種還沒開口就有人想幫忙的人。事業上你靠的是口碑，認識你的人都願意替你說話。別怕麻煩別人，你平常幫出去的早就夠多了。'},
+};
+// 四運短評：LUCK_TEXT[運][星數-1]
+const LUCK_TEXT = [
+  ['錢來得慢一點，但你不太為錢煩惱，這也是一種福氣。', '財運平穩，靠固定收入慢慢累積最適合你。', '該有的都會有，偶爾還會多一筆意外的小收入。', '財庫不小，進來的錢留得住，適合早點學理財。', '這是很會聚財的相，錢喜歡往你這邊跑。'],
+  ['感情開得比較晚，遇到對的人以前你寧可一個人。', '感情細水長流，不轟轟烈烈，但很耐看。', '有人緣也有桃花，緣分到了自然會開始。', '很容易被喜歡，談起戀愛也很投入。', '桃花很旺，你要煩惱的是怎麼選。'],
+  ['你不愛跟人搶，做自己喜歡的事最自在。', '事業穩穩地走，找到擅長的位置就會發光。', '有能力也有機會，願意多走一步就會被看見。', '很有做事的格局，適合負責重要的事。', '天生扛得起大任，位置越高你越自在。'],
+  ['朋友不多，但留下來的都是真心的。', '人緣普通偏好，熟了以後大家才知道你有多好。', '到哪裡都交得到朋友，貴人運不差。', '人緣很好，有事的時候總有人伸手。', '人見人愛，貴人多到要排隊。'],
+];
+const PERIOD_TEXT = {
+  upper: '上停最長，少年得志。你起步早，三十歲以前就會有讓人記住的表現。',
+  mid:   '中停最長，中年發力。三十到五十歲是你的主場，越忙越順。',
+  lower: '下停最長，晚福深厚。前面累積的東西，五十歲以後會一樣一樣回到你身上。',
+  even:  '三停均等，一路平穩。你的運不集中在哪一段，每個階段都過得去。',
+};
+const SLIDER_TEXT = {
+  browWide: '印堂開闊，心胸寬，容易交到朋友',
+  browNarrow: '印堂集中，專注力強，做事不容易分心',
+  noseWide: '鼻翼寬，財庫也寬',
+  upperLong: '上身偏長，坐得住、守得住',
+  lowerLong: '下身偏長，行動力強，適合往外跑',
+};
+const JOKE = '髮型、膚色和衣服都不算在相裡。衣服不影響命，但影響你今天的心情。';
+const SAY = ['先看額頭，這是少年運…', '再看鼻子，中年的財庫在這…', '下巴看的是晚年…', '最後看手…', '看好了。'];
+const BANNED = ['剋', '短命', '夭', '破財', '凶', '孤', '刑', '敗', '衰'];
+// 星數門檻：該運分數 ÷ 該運理論最高分
+const STAR_STEPS = [0.12, 0.22, 0.32, 0.44];
+
+const SKINS = [[247,205,181], [255,226,208], [236,188,150], [214,160,120], [176,120,84], [128,84,58]];
+const HAIRS = [
+  {id: 'none', name: '光頭'}, {id: 'short', name: '短髮'}, {id: 'bob', name: '鮑伯頭'},
+  {id: 'long', name: '長直髮'}, {id: 'ponytail', name: '馬尾'}, {id: 'bun', name: '丸子頭'},
+];
+const HAIR_COLORS = ['#463a3c', '#6b4a3a', '#a06f4c', '#e6c682', '#b5523f', '#f2a7b8', '#8fb2e0', '#f4f4f6'];
+// 佔位衣服：直接把標準人的灰色打底衣染色。之後有正式圖就加 asset 欄位
+const TOPS = [
+  {name: '白T', c: [250,250,250]}, {name: '奶茶色', c: [224,198,172]}, {name: '霧藍', c: [150,180,214]},
+  {name: '粉紅', c: [244,182,194]}, {name: '條紋', c: [250,250,250], c2: [74,90,130]}, {name: '黑色', c: [72,68,76]},
+];
+const BOTTOMS = [
+  {name: '牛仔褲', c: [92,116,156]}, {name: '黑長褲', c: [62,60,68]}, {name: '卡其褲', c: [202,178,142]},
+  {name: '牛仔短褲', c: [92,116,156], short: 1}, {name: '白短褲', c: [248,248,248], short: 1},
+];
+const TABS = [
+  ['face', '臉型', 'head'], ['chin', '下巴', 'head'], ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
+  ['nose', '鼻', 'head'], ['mouth', '嘴', 'head'], ['ears', '耳', 'head'], ['moles', '痣', 'head'],
+  ['ratio', '比例', 'head'], ['hair', '髮型', 'head'], ['skin', '膚色', 'full'], ['body', '身體', 'full'], ['clothes', '服裝', 'full'],
+];
+
+/* ================= 判定（只讀上面的表，不含隨機） ================= */
+function defaultChar() {
+  const c = {moles: [], skin: 0, hair: 2, hairColor: 1, top: 0, bottom: 0};
+  for (const k in PARTS) c[k] = 0;
+  for (const s of SLIDERS) c[s.id] = 50;
+  return c;
+}
+const MAX_SCORE = (() => {
+  const m = [0, 0, 0, 0];
+  for (const k in PARTS) for (let i = 0; i < 4; i++) m[i] += Math.max(...PARTS[k].options.map(o => o.s[i]));
+  for (let i = 0; i < 4; i++) m[i] += MOLES.map(o => o.s[i]).sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0);
+  m[0] += 2; m[2] += 2; m[3] += 1; // 滑桿：鼻翼、上身長給財；眉距窄、下身長給業；眉距寬給緣
+  return m;
+})();
+function judge(c) {
+  const score = [0, 0, 0, 0], notes = [];
+  const add = s => s.forEach((v, i) => score[i] += v);
+  for (const k in PARTS) add(PARTS[k].options[c[k]].s);
+  for (const id of c.moles) add(MOLES.find(m => m.id === id).s);
+  if (c.browDist >= 60) { score[3]++; notes.push(['眉距', SLIDER_TEXT.browWide]); }
+  if (c.browDist <= 40) { score[2]++; notes.push(['眉距', SLIDER_TEXT.browNarrow]); }
+  if (c.noseWidth >= 60) { score[0]++; notes.push(['鼻翼', SLIDER_TEXT.noseWide]); }
+  if (c.legs <= 40) { score[0]++; notes.push(['身形', SLIDER_TEXT.upperLong]); }
+  if (c.legs >= 60) { score[2]++; notes.push(['身形', SLIDER_TEXT.lowerLong]); }
+  const ratio = score.map((v, i) => v / MAX_SCORE[i]);
+  const stars = ratio.map(r => 1 + STAR_STEPS.filter(t => r >= t).length);
+  const order = [0, 1, 2, 3].sort((a, b) => ratio[b] - ratio[a] || a - b);
+  const main = order[0], second = order[1];
+  const face = PARTS.face.options[c.face];
+  const zones = [['upper', c.upper], ['mid', c.mid], ['lower', c.lower]];
+  const top = Math.max(c.upper, c.mid, c.lower);
+  const longest = zones.filter(z => z[1] === top);
+  const period = longest.length === 1 ? longest[0][0] : 'even';
+  const res = {score, stars, main, second, weak: order[3], prefix: face.el, name: TITLES[face.el][main],
+               id: 'T_' + face.id + '_' + main, period, notes, hidden: null};
+  const hid = HIDDEN.find(h => h.test(c, stars, period));
+  if (hid) Object.assign(res, {prefix: '隱藏稱號', name: hid.name, id: 'H_' + hid.id, hidden: hid});
+  return res;
+}
+function checkCopy() {
+  const all = [JOKE, ...SAY, ...Object.values(PERIOD_TEXT), ...Object.values(SLIDER_TEXT), ...LUCK_TEXT.flat(),
+    ...Object.values(SUMMARY).flatMap(o => Object.values(o)), ...Object.values(TITLES).flat(),
+    ...MOLES.map(m => m.name + m.text), ...HIDDEN.map(h => h.name + h.hint + h.text), ...Object.values(LIUNIAN).flatMap(o => Object.values(o)),
+    ...PAIR_TITLES.flatMap(t => Object.values(t[1])), ...QUIPS, ...Object.values(RUB), ...Object.values(PAIR_TEXT).filter(v => typeof v === 'string'), ...Object.values(PAIR_TEXT.egg), ...Object.values(PARTS).flatMap(p => p.options.map(o => o.name + o.text))];
+  let bad = 0;
+  for (const t of all) for (const b of BANNED) if (t.includes(b)) { console.error('文案出現禁用詞「' + b + '」：' + t); bad++; }
+  return bad;
+}
+
+/* ================= 存檔與追蹤 ================= */
+const save = {
+  load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch { return {}; } },
+  write(d) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(d)); } catch {} },
+};
+let store = save.load();
+let ch = Object.assign(defaultChar(), store.character || {});
+store.titles = store.titles || [];
+function persist() { store.character = ch; save.write(store); }
+function sessionId() {
+  let s; try { s = sessionStorage.getItem('sid'); if (!s) { s = Math.random().toString(36).slice(2); sessionStorage.setItem('sid', s); } } catch { s = 'x'; }
+  return s;
+}
+function track(event, value = '') {
+  if (!ENDPOINT) return;
+  const body = JSON.stringify({event, value, session: sessionId(), device: innerWidth < 700 ? 'mobile' : 'desktop',
+    source: new URLSearchParams(location.search).get('utm_source') || ''});
+  navigator.sendBeacon ? navigator.sendBeacon(ENDPOINT, body) : fetch(ENDPOINT, {method: 'POST', mode: 'no-cors', body});
+}
+
+/* ================= 聲音（全部用 Web Audio 合成） ================= */
+const snd = {
+  ctx: null, muted: !!store.muted, timer: null, step: 0,
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {} } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  tone(f, dur, type = 'sine', vol = .12, slide = 0, when = 0) {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime + when, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + dur + .02);
+  },
+  pop() { this.tone(620, .09, 'sine', .14, 300); },
+  tick() { this.tone(1500, .025, 'square', .03); },
+  wood() { this.tone(820, .09, 'triangle', .22, 620); this.tone(1640, .04, 'square', .04); },
+  deflate() { this.tone(330, .8, 'sawtooth', .06, 70); this.tone(220, .5, 'triangle', .06, 90, .2); },
+  chime() { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, .5, 'sine', .1, 0, i * .09)); },
+  bgm(on) {
+    clearInterval(this.timer); this.timer = null;
+    if (!on) return;
+    const notes = [392, 440, 523, 587, 659, 587, 523, 440, 392, 330, 392, 440, 523, 440, 392, 0];
+    this.timer = setInterval(() => { const f = notes[this.step++ % notes.length]; if (f) this.tone(f, .42, 'triangle', .035); }, 460);
+  },
+};
+
+/* ================= 繪圖 ================= */
+const PK = window.PACK, META = PK.meta, IT = PK.items, IMG = {};
+const HD = META.head, BD = META.body, AN = BD.anchor, Z = BD.zones, SK0 = META.skin;
+const OY = 220, HC_W = HD.size, HC_H = 1800;
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const skinC = mk(HC_W, HC_H), headC = mk(HC_W, HC_H), backC = mk(HC_W, HC_H), tmpC = mk(HC_W, HC_H), bodyC = mk(BD.w, BD.h);
+const cache = {skin: '', head: '', body: ''};
+const sm = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
+const sl = (v, amt) => (v - 50) / 50 * amt;
+
+function loadImages() {
+  return Promise.all(Object.keys(IT).map(id => new Promise(res => {
+    const im = new Image(); im.onload = () => { IMG[id] = im; res(); }; im.onerror = () => { console.error('素材載入失敗', id); res(); }; im.src = IT[id].src;
+  })));
+}
+function faceId(c) {
+  const f = PARTS.face.options[c.face].id, ci = PARTS.chin.options[c.chin].id;
+  const shape = (ci === 'double' || ci === 'cleft') ? 'base' : ci;
+  return 'face_' + f + '_' + shape;
+}
+function recolorSkin(d, target) {
+  const k0 = target[0] / SK0[0], k1 = target[1] / SK0[1], k2 = target[2] / SK0[2];
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (r > g && g > b && r - b > 25) {
+      let w = ((r + g + b) / 3 - 95) / 55; if (w <= 0) continue; if (w > 1) w = 1;
+      d[i] = r + (Math.min(255, r * k0) - r) * w; d[i + 1] = g + (Math.min(255, g * k1) - g) * w; d[i + 2] = b + (Math.min(255, b * k2) - b) * w;
+    }
+  }
+}
+// 成對部件（眉、眼、耳）左右分開畫，才能各自位移、縮放
+function drawPair(ctx, id, o) {
+  const it = IT[id], im = IMG[id]; if (!im) return;
+  const split = HD.cx - it.x, sx = im.naturalWidth / it.w || 1;
+  for (const side of [-1, 1]) {
+    const x0 = side < 0 ? 0 : split, w = side < 0 ? split : it.w - split;
+    const cx = it.x + x0 + w / 2 + side * (o.dx || 0), cy = it.y + it.h / 2 + (o.dy || 0), s = o.scale || 1;
+    ctx.drawImage(im, x0 * sx, 0, w * sx, im.naturalHeight, cx - w * s / 2, cy - it.h * s / 2, w * s, it.h * s);
+  }
+}
+function tinted(id, color) {
+  const im = IMG[id], it = IT[id], t = tmpC.getContext('2d');
+  t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, HC_W, HC_H);
+  t.drawImage(im, it.x, it.y + OY, it.w, it.h);
+  t.globalCompositeOperation = 'multiply'; t.fillStyle = color; t.fillRect(0, 0, HC_W, HC_H);
+  t.globalCompositeOperation = 'destination-in'; t.drawImage(im, it.x, it.y + OY, it.w, it.h);
+  t.globalCompositeOperation = 'source-over';
+  return tmpC;
+}
+function chinYOf(c) {
+  const fid = faceId(c), base = (IT[fid] && IT[fid].chinY) || (META.faces[fid] || {}).chinY || HD.chin;
+  return STRETCH_Y + (base - STRETCH_Y) * (1 + sl(c.lower, .07));
+}
+const STRETCH_Y = 560;
+function renderHead(c) {
+  const fid = faceId(c), fm = META.faces[fid] || {hwEar: HD.hwEar};
+  const earId = 'ears_' + PARTS.ears.options[c.ears].id, earDx = (fm.hwEar || HD.hwEar) - HD.hwEar;
+  const lowK = 1 + sl(c.lower, .07), fy = sl(c.featY, 14);
+  const skinKey = [fid, earId, c.skin, c.lower, c.featY].join('|');
+  if (cache.skin !== skinKey) {
+    const s = skinC.getContext('2d', {willReadFrequently: true}); s.clearRect(0, 0, HC_W, HC_H); s.save(); s.translate(0, OY);
+    drawPair(s, earId, {dx: earDx, dy: fy});
+    const it = IT[fid], im = IMG[fid], ry = im.naturalHeight / it.h, hTop = STRETCH_Y - it.y;
+    s.drawImage(im, 0, 0, im.naturalWidth, hTop * ry, it.x, it.y, it.w, hTop);
+    s.drawImage(im, 0, hTop * ry, im.naturalWidth, (it.h - hTop) * ry, it.x, STRETCH_Y - .5, it.w, (it.h - hTop) * lowK + .5);
+    s.restore();
+    const d = s.getImageData(0, OY, HC_W, 1000); recolorSkin(d.data, SKINS[c.skin]); s.putImageData(d, 0, OY);
+    cache.skin = skinKey;
+  }
+  const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0); h.save(); h.translate(0, OY);
+  const chinY = chinYOf(c), cid = PARTS.chin.options[c.chin].id;
+  if (cid === 'double' || cid === 'cleft') { const m = IT['chinmark_' + cid]; h.drawImage(IMG['chinmark_' + cid], m.x, m.y + chinY, m.w, m.h); }
+  const eyeDy = sl(c.upper, 22) + fy;
+  drawPair(h, 'brows_' + PARTS.brows.options[c.brows].id, {dx: sl(c.browDist, 14), dy: eyeDy});
+  drawPair(h, 'eyes_' + PARTS.eyes.options[c.eyes].id, {dy: eyeDy, scale: 1 + sl(c.eyeSize, .15)});
+  const nid = 'nose_' + PARTS.nose.options[c.nose].id, n = IT[nid], nK = 1 + sl(c.mid, .15), nW = 1 + sl(c.noseWidth, .18);
+  const nTop = n.y + eyeDy * .6;
+  h.drawImage(IMG[nid], HD.cx - (HD.cx - n.x) * nW, nTop, n.w * nW, n.h * nK);
+  const mid = 'mouth_' + PARTS.mouth.options[c.mouth].id, m = IT[mid], mS = 1 + sl(c.mouthSize, .15);
+  const mouthDy = eyeDy * .6 + n.h * (nK - 1) + sl(c.lower, 10);
+  const mcx = m.x + m.w / 2, mcy = m.y + m.h / 2 + mouthDy;
+  h.drawImage(IMG[mid], mcx - m.w * mS / 2, mcy - m.h * mS / 2, m.w * mS, m.h * mS);
+  // 痣
+  const hw = (fm.hwEar || HD.hwEar);
+  const pos = {brow: [HD.cx - 118, 338 + eyeDy], tear: [HD.cx + 196, 462 + eyeDy], nose: [HD.cx + 16, nTop + n.h * nK * .72],
+               mouth: [HD.cx + 76, mcy + 16], chin: [HD.cx - 22, chinY - 46], lobe: [HD.cx - hw - 26, 498 + fy]};
+  h.fillStyle = '#4a2c2a';
+  for (const id of c.moles) { const p = pos[id]; h.beginPath(); h.arc(p[0], p[1], 6, 0, 7); h.fill(); }
+  h.restore();
+  // 頭髮
+  const b = backC.getContext('2d'); b.clearRect(0, 0, HC_W, HC_H);
+  const hid = HAIRS[c.hair].id;
+  if (hid !== 'none') {
+    const col = HAIR_COLORS[c.hairColor];
+    if (IMG['hair_' + hid + '_back']) b.drawImage(tinted('hair_' + hid + '_back', col), 0, 0);
+    if (IMG['hair_' + hid + '_front']) h.drawImage(tinted('hair_' + hid + '_front', col), 0, 0);
+  }
+}
+function renderBody(c) {
+  const key = [c.skin, c.top, c.bottom].join('|'); if (cache.body === key) return;
+  const x = bodyC.getContext('2d', {willReadFrequently: true}), it = IT.body_base; x.clearRect(0, 0, BD.w, BD.h);
+  x.drawImage(IMG.body_base, it.x, it.y, it.w, it.h);
+  const d = x.getImageData(it.x, it.y, it.w, it.h), p = d.data;
+  recolorSkin(p, SKINS[c.skin]);
+  const top = TOPS[c.top], bot = BOTTOMS[c.bottom], skin = SKINS[c.skin];
+  const hem = Z.hip, legEnd = Z.ankle, shortEnd = Math.round(Z.hip + (Z.ankle - Z.hip) * .3);
+  for (let yy = 0; yy < it.h; yy++) {
+    const Y = yy + it.y; if (Y >= legEnd) break;
+    let col;
+    if (Y < hem) col = (top.c2 && Math.floor(Y / 16) % 2) ? top.c2 : top.c;
+    else if (bot.short && Y > shortEnd) col = skin;
+    else col = bot.c;
+    const edge = (Y >= hem - 3 && Y < hem) || (bot.short && Y > shortEnd - 3 && Y <= shortEnd) ? .72 : 1;
+    for (let xx = 0, i = yy * it.w * 4; xx < it.w; xx++, i += 4) {
+      if (!p[i + 3]) continue;
+      const r = p[i], g = p[i + 1], b = p[i + 2], l = (r + g + b) / 3;
+      if (l > 150 && Math.abs(r - b) < 14 && Math.abs(r - g) < 14) {
+        const k = Math.min(1.03, l / 217) * edge;
+        p[i] = col[0] * k; p[i + 1] = col[1] * k; p[i + 2] = col[2] * k;
+      }
+    }
+  }
+  x.putImageData(d, it.x, it.y); cache.body = key;
+}
+function prepare(c) { renderHead(c); renderBody(c); }
+// 把整個角色畫進 ctx（身體座標）。回傳頭部在身體座標裡的位置，給鏡頭用
+function drawFigure(ctx, c) {
+  const shK = [0, .08, -.06][c.shoulder], wK = 1 + sl(c.weight, .06), legK = 1 + sl(c.legs, .06), hK = 1 + sl(c.height, .05);
+  const lift = (Z.ground - Z.hip) * (legK - 1), k = AN.k;
+  ctx.save();
+  ctx.translate(AN.cx, Z.ground); ctx.scale(hK, hK); ctx.translate(-AN.cx, -Z.ground - lift);
+  const hx = AN.cx - HD.cx * k, hy = AN.top - (HD.top + OY) * k;
+  ctx.drawImage(backC, hx, hy, HC_W * k, HC_H * k);
+  const step = 4;
+  for (let y = IT.body_base.y; y < BD.h; y += step) {
+    const r = sm(Z.neck + 10, Z.shoulder + 30, y), rs = 1 - sm(620, 1000, y);
+    const xs = 1 + r * (wK * (1 + shK * rs) - 1);
+    const dy = y <= Z.hip ? y : Z.hip + (y - Z.hip) * legK;
+    ctx.drawImage(bodyC, 0, y, BD.w, step, AN.cx - AN.cx * xs, dy, BD.w * xs, step * (y < Z.hip ? 1 : legK) + .6);
+  }
+  ctx.drawImage(headC, hx, hy, HC_W * k, HC_H * k);
+  ctx.restore();
+}
+// 鏡頭：把身體座標裡的一塊區域放進畫布
+const CAM = {full: [150, 70, 930, 1900], head: [AN.cx - 205, AN.top - 70, AN.cx + 205, AN.chin + 95]};
+function camFor(view, c) {
+  const r = CAM[view].slice();
+  if (view === 'head') { const hK = 1 + sl(c.height, .05), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
+    const f = y => Z.ground + (y - lift - Z.ground) * hK; r[1] = f(r[1]); r[3] = f(r[3]); }
+  return r;
+}
+function paint(canvas, c, rect, bg) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return null;
+  if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+  const ctx = canvas.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const s = Math.min(canvas.width / (rect[2] - rect[0]), canvas.height / (rect[3] - rect[1]));
+  const tx = (canvas.width - (rect[2] - rect[0]) * s) / 2 - rect[0] * s, ty = (canvas.height - (rect[3] - rect[1]) * s) / 2 - rect[1] * s;
+  ctx.setTransform(s, 0, 0, s, tx, ty); ctx.imageSmoothingQuality = 'high';
+  drawFigure(ctx, c);
+  return {ctx, s, tx, ty};
+}
+
+/* ================= 介面 ================= */
+const $ = id => document.getElementById(id);
+let tab = 'face', view = 'head', camNow = null, camAnim = 0, undoStack = [];
+function go(id) { const sh = document.getElementById('pairSheet'); if (sh) sh.classList.remove('on'); document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+function redraw() {
+  prepare(ch);
+  const target = camFor(view, ch);
+  if (!camNow) camNow = target;
+  cancelAnimationFrame(camAnim);
+  const stepCam = () => {
+    let moving = false;
+    camNow = camNow.map((v, i) => { const d = target[i] - v; if (Math.abs(d) > .5) { moving = true; return v + d * .28; } return target[i]; });
+    paint($('view'), ch, camNow);
+    if (moving) camAnim = requestAnimationFrame(stepCam);
+  };
+  stepCam();
+  const chips = [];
+  if (view === 'full') { chips.push('站姿：' + PARTS.stance.options[ch.stance].name + '（圖待補）'); chips.push('手：' + PARTS.hand.options[ch.hand].name); }
+  $('chips').innerHTML = chips.map(t => '<span>' + t + '</span>').join('');
+  $('zoomBtn').textContent = view === 'head' ? '看全身' : '看臉';
+}
+function change(fn, quiet) {
+  undoStack.push(JSON.stringify(ch)); if (undoStack.length > 40) undoStack.shift();
+  fn(); persist(); if (!quiet) snd.pop(); redraw();
+}
+function thumb(id) { return IT[id] ? '<img src="' + IT[id].src + '" alt="">' : ''; }
+function phTag(id) { return IT[id] && IT[id].ph ? '<span class="ph">佔位</span>' : ''; }
+function optGrid(key, assetOf) {
+  return '<div class="grid">' + PARTS[key].options.map((o, i) => {
+    const aid = assetOf ? assetOf(o) : null;
+    return '<button class="opt' + (ch[key] === i ? ' on' : '') + '" data-k="' + key + '" data-i="' + i + '">' +
+      (aid ? thumb(aid) + phTag(aid) : '') + '<span>' + o.name + '</span></button>';
+  }).join('') + '</div>';
+}
+function sliderRows(t) {
+  return SLIDERS.filter(s => s.tab === t).map(s => '<div class="slider"><label>' + s.name + '</label><input type="range" min="0" max="100" step="5" value="' + ch[s.id] + '" data-s="' + s.id + '"><small>' + s.hint + '</small></div>').join('');
+}
+function swatches(key, list, toCss) {
+  return '<div class="grid" style="grid-template-columns:repeat(6,1fr)">' + list.map((c, i) => '<button class="opt' + (ch[key] === i ? ' on' : '') + '" data-k="' + key + '" data-i="' + i + '" style="min-height:52px"><span class="sw" style="background:' + toCss(c) + '"></span></button>').join('') + '</div>';
+}
+function renderPanel() {
+  const p = $('panel'); let h = '';
+  if (tab === 'face') h = optGrid('face', o => 'face_' + o.id + '_base');
+  else if (tab === 'chin') h = optGrid('chin', o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_' + PARTS.face.options[ch.face].id + '_' + o.id);
+  else if (['brows', 'eyes', 'nose', 'mouth', 'ears'].includes(tab)) h = optGrid(tab, o => tab + '_' + o.id);
+  else if (tab === 'moles') h = '<div class="note">最多選 3 顆，再點一次可以拿掉。</div><div class="grid">' + MOLES.map(m => '<button class="opt' + (ch.moles.includes(m.id) ? ' on' : '') + '" data-mole="' + m.id + '"><span>' + m.name + '</span></button>').join('') + '</div>';
+  else if (tab === 'ratio') h = '<div class="note">額頭、鼻子、下巴三段叫「三停」，哪一段最長，就看哪個時期最旺。</div>' + sliderRows('ratio');
+  else if (tab === 'hair') h = '<div class="grid">' + HAIRS.map((o, i) => '<button class="opt' + (ch.hair === i ? ' on' : '') + '" data-k="hair" data-i="' + i + '">' + (o.id === 'none' ? '' : thumb('hair_' + o.id + '_front') + phTag('hair_' + o.id + '_front')) + '<span>' + o.name + '</span></button>').join('') + '</div><div class="group">髮色</div>' + swatches('hairColor', HAIR_COLORS, c => c);
+  else if (tab === 'skin') h = '<div class="note">膚色不算在相裡，選你喜歡的。</div>' + swatches('skin', SKINS, c => 'rgb(' + c.join(',') + ')');
+  else if (tab === 'body') h = '<div class="group">肩</div>' + optGrid('shoulder') + '<div class="group">手</div>' + optGrid('hand', o => 'hand_' + o.id) + '<div class="group">站姿</div>' + optGrid('stance') + '<div class="group">身形</div>' + sliderRows('body');
+  else if (tab === 'clothes') h = '<div class="group">上衣（佔位）</div><div class="grid">' + TOPS.map((o, i) => '<button class="opt' + (ch.top === i ? ' on' : '') + '" data-k="top" data-i="' + i + '"><span class="sw" style="background:rgb(' + o.c.join(',') + ')"></span><span>' + o.name + '</span></button>').join('') + '</div><div class="group">下身（佔位）</div><div class="grid">' + BOTTOMS.map((o, i) => '<button class="opt' + (ch.bottom === i ? ' on' : '') + '" data-k="bottom" data-i="' + i + '"><span class="sw" style="background:rgb(' + o.c.join(',') + ')"></span><span>' + o.name + '</span></button>').join('') + '</div>';
+  p.innerHTML = h;
+}
+function renderTabs() {
+  $('tabs').innerHTML = TABS.map(t => '<button class="' + (t[0] === tab ? 'on' : '') + '" data-t="' + t[0] + '">' + t[1] + '</button>').join('');
+}
+function randomChar() {
+  const r = n => Math.floor(Math.random() * n), c = defaultChar();
+  for (const k in PARTS) c[k] = r(PARTS[k].options.length);
+  const pool = MOLES.map(m => m.id).sort(() => Math.random() - .5); c.moles = pool.slice(0, r(3));
+  for (const s of SLIDERS) c[s.id] = 20 + r(13) * 5;
+  c.skin = r(SKINS.length); c.hair = r(HAIRS.length); c.hairColor = r(HAIR_COLORS.length); c.top = r(TOPS.length); c.bottom = r(BOTTOMS.length);
+  return c;
+}
+
+/* ---------- 看相演出 ---------- */
+let watchTimer = 0, lastResult = null;
+function startReading() {
+  go('watch'); snd.init(); prepare(ch);
+  const cv = $('watchView'), k = AN.k, legLift = (Z.ground - Z.hip) * sl(ch.legs, .06), hK = 1 + sl(ch.height, .05);
+  const toBody = (hx, hy) => [AN.cx + (hx - HD.cx) * k, AN.top + (hy - HD.top) * k];
+  const fix = p => [AN.cx + (p[0] - AN.cx) * hK, Z.ground + (p[1] - legLift - Z.ground) * hK];
+  const pts = [toBody(HD.cx, 190), toBody(HD.cx, 520), toBody(HD.cx, chinYOf(ch) - 30), [300, 1100 + legLift]].map(fix);
+  const t0 = performance.now(), dur = 620; let last = -1;
+  cancelAnimationFrame(watchTimer);
+  const frame = now => {
+    const i = Math.max(0, Math.floor((now - t0) / dur));
+    if (i !== last && i < 4) { snd.wood(); last = i; }
+    $('sayText').textContent = SAY[Math.min(i, 4)];
+    const rect = i < 3 ? [AN.cx - 330, 60, AN.cx + 330, 1130] : CAM.full;
+    const v = paint(cv, ch, rect);
+    if (v && i < 4) {
+      const ph = ((now - t0) % dur) / dur, p = pts[i], c = v.ctx;
+      c.strokeStyle = 'rgba(232,138,168,' + (1 - ph) + ')'; c.lineWidth = 6 / v.s * 2;
+      c.beginPath(); c.arc(p[0], p[1], 26 + ph * 34, 0, 7); c.stroke();
+      c.fillStyle = '#c9a24b'; c.beginPath(); c.arc(p[0], p[1], 9, 0, 7); c.fill();
+    }
+    if (i >= 4.6 || now - t0 > dur * 4 + 350) return showResult();
+    watchTimer = requestAnimationFrame(frame);
+  };
+  watchTimer = requestAnimationFrame(frame);
+}
+
+/* ---------- 結果與結果卡 ---------- */
+const starStr = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+function showResult() {
+  cancelAnimationFrame(watchTimer);
+  const r = lastResult = judge(ch);
+  $('rPrefix').textContent = r.prefix; $('rName').textContent = r.name; $('rHidden').textContent = r.hidden ? r.hidden.text : '';
+  $('pairGo').style.display = pairCtx && pairCtx.mode === 'invite' ? 'block' : 'none';
+  $('rSummary').textContent = SUMMARY[r.main][r.second];
+  $('rLuck').innerHTML = FORT_NAME.map((n, i) => '<b>' + n + '</b><span class="st">' + starStr(r.stars[i]) + '</span><span class="tx">' + LUCK_TEXT[i][r.stars[i] - 1] + '</span>').join('');
+  $('rPeriod').textContent = PERIOD_TEXT[r.period];
+  let rows = '';
+  for (const k in PARTS) { const o = PARTS[k].options[ch[k]]; rows += '<b>' + o.name + '</b><span>' + o.text + '</span>'; }
+  for (const id of ch.moles) { const m = MOLES.find(x => x.id === id); rows += '<b>' + m.name + '的痣</b><span>' + m.text + '</span>'; }
+  for (const n of r.notes) rows += '<b>' + n[0] + '</b><span>' + n[1] + '</span>';
+  $('rRead').innerHTML = rows; $('rJoke').textContent = JOKE;
+  const card = makeCard(r);
+  try { $('cardImg').src = card.toDataURL('image/jpeg', .85); } catch (e) { console.error(e); }
+  go('result'); $('result').scrollTop = 0; snd.chime(); if (r.hidden) setTimeout(() => snd.chime(), 520);
+  $('lnAge').value = {upper: 22, mid: 40, lower: 60, even: 25}[r.period]; requestAnimationFrame(drawLiunian);
+  store.seen = [...new Set((store.seen || []).concat(Object.keys(PARTS).map(k => k + ':' + PARTS[k].options[ch[k]].id), ch.moles.map(m => 'mole:' + m)))];
+  track('reading', r.id);
+  if (!store.titles.includes(r.id)) { store.titles.push(r.id); track('title_unlock', r.id); }
+  store.readings = (store.readings || 0) + 1; persist(); refreshHome();
+}
+function wrapText(ctx, text, x, y, maxW, lh) {
+  let line = '';
+  for (const chr of text) {
+    if (ctx.measureText(line + chr).width > maxW && !'，。、！？'.includes(chr)) { ctx.fillText(line, x, y); line = chr; y += lh; }
+    else line += chr;
+  }
+  if (line) ctx.fillText(line, x, y);
+  return y + lh;
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function makeCard(r) {
+  prepare(ch);
+  const W = 1080, H = 1920, cv = mk(W, H), c = cv.getContext('2d'), F = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#fbe3ec'); g.addColorStop(1, '#fff3e4'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = 'rgba(255,255,255,.65)'; rr(c, 40, 40, W - 80, H - 80, 48); c.fill();
+  c.textAlign = 'center'; c.fillStyle = '#c9a24b'; c.font = '600 40px ' + F; c.fillText('從 頭 相 到 腳', W / 2, 128);
+  c.fillStyle = '#c9a24b'; c.font = '600 54px ' + F; c.fillText(r.prefix, W / 2, 232);
+  c.fillStyle = '#4a3b47'; c.font = '800 ' + (r.name.length > 4 ? 112 : 132) + 'px ' + F; c.fillText(r.name, W / 2, 372);
+  // 全身
+  const rect = CAM.full, s = 1010 / (rect[3] - rect[1]);
+  c.save(); c.translate(70 - rect[0] * s, 452 - rect[1] * s); c.scale(s, s); c.imageSmoothingQuality = 'high'; drawFigure(c, ch); c.restore();
+  // 大頭特寫
+  const hr = camFor('head', ch), R = 196, cx = 800, cy = 660, hs = (R * 2) / (hr[3] - hr[1]);
+  c.save(); c.beginPath(); c.arc(cx, cy, R, 0, 7); c.closePath(); c.fillStyle = '#fff6f0'; c.fill(); c.clip();
+  c.translate(cx - ((hr[0] + hr[2]) / 2) * hs, cy - ((hr[1] + hr[3]) / 2) * hs); c.scale(hs, hs); drawFigure(c, ch); c.restore();
+  c.strokeStyle = '#c9a24b'; c.lineWidth = 6; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke();
+  // 四運
+  c.textAlign = 'left';
+  FORT_NAME.forEach((n, i) => {
+    const y = 960 + i * 92;
+    c.fillStyle = '#4a3b47'; c.font = '700 44px ' + F; c.fillText(n, 590, y);
+    c.fillStyle = '#c9a24b'; c.font = '46px ' + F; c.fillText(starStr(r.stars[i]), 716, y);
+  });
+  c.fillStyle = '#e88aa8'; c.font = '600 36px ' + F;
+  c.fillText({upper: '少年得志', mid: '中年發力', lower: '晚福深厚', even: '一路平穩'}[r.period], 590, 1340);
+  // 總評
+  c.fillStyle = '#fffaf5'; rr(c, 84, 1484, W - 168, 300, 32); c.fill();
+  c.fillStyle = '#4a3b47'; c.font = '38px ' + F; wrapText(c, SUMMARY[r.main][r.second], 124, 1552, W - 248, 58);
+  c.textAlign = 'center'; c.fillStyle = '#8a7a86'; c.font = '30px ' + F; c.fillText('從頭相到腳 ・ may22', W / 2, 1846);
+  return cv;
+}
+function saveCard() {
+  const cv = makeCard(lastResult || judge(ch));
+  cv.toBlob(async blob => {
+    if (!blob) return;
+    const file = new File([blob], '從頭相到腳.png', {type: 'image/png'});
+    track('share', 'single');
+    if (navigator.canShare && navigator.canShare({files: [file]}) && innerWidth < 820) {
+      try { await navigator.share({files: [file], title: '從頭相到腳'}); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+}
+
+/* ---------- 事件 ---------- */
+$('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.t; view = TABS.find(t => t[0] === tab)[2]; snd.tick(); renderTabs(); renderPanel(); $('panel').scrollTop = 0; redraw(); });
+$('panel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mole) {
+    const id = b.dataset.mole;
+    if (!ch.moles.includes(id) && ch.moles.length >= 3) return;
+    change(() => { ch.moles = ch.moles.includes(id) ? ch.moles.filter(m => m !== id) : ch.moles.concat(id); });
+  } else if (b.dataset.k) change(() => { ch[b.dataset.k] = +b.dataset.i; });
+  const st = $('panel').scrollTop; renderPanel(); $('panel').scrollTop = st;
+});
+$('panel').addEventListener('input', e => { const s = e.target.dataset.s; if (!s) return; if (!e.target._h) { undoStack.push(JSON.stringify(ch)); e.target._h = 1; } ch[s] = +e.target.value; snd.tick(); persist(); redraw(); });
+$('panel').addEventListener('change', e => { if (e.target.dataset.s) e.target._h = 0; });
+$('zoomBtn').onclick = () => { view = view === 'head' ? 'full' : 'head'; redraw(); };
+$('randBtn').onclick = () => { change(() => { ch = randomChar(); }); renderPanel(); };
+$('undoBtn').onclick = () => { if (!undoStack.length) return; ch = JSON.parse(undoStack.pop()); persist(); snd.tick(); renderPanel(); redraw(); };
+$('readBtn').onclick = startReading;
+$('skipBtn').onclick = showResult;
+$('backBtn').onclick = () => { go('make'); redraw(); };
+addEventListener('resize', () => { if ($('result').classList.contains('active')) drawLiunian(); });
+$('saveBtn').onclick = saveCard;
+$('startBtn').onclick = () => { snd.init(); snd.bgm(true); go('make'); renderTabs(); renderPanel(); camNow = null; redraw(); track('start'); };
+$('mute').onclick = () => { snd.muted = !snd.muted; store.muted = snd.muted; persist(); $('mute').textContent = snd.muted ? '🔕' : '🔔'; snd.init(); };
+$('mute').textContent = snd.muted ? '🔕' : '🔔';
+addEventListener('resize', () => { if ($('make').classList.contains('active')) redraw(); });
+
+/* ================= 第 2 階段：隱藏稱號、流年、合盤、圖鑑 ================= */
+const HIDDEN = [
+  {id: 'chosen',   name: '天選之人', hint: '什麼都有的人',         text: '四運都旺，這種相一百個人裡挑不出幾個。',
+   test: (c, st) => st.every(s => s >= 4)},
+  {id: 'general',  name: '將帥之相', hint: '眉眼有殺氣，肩上有擔子', text: '劍眉配鳳眼，再加一副寬肩，站出來就有人想跟。',
+   test: c => op(c, 'brows') === 'sword' && op(c, 'eyes') === 'phoenix' && op(c, 'shoulder') === 'wide'},
+  {id: 'blossom',  name: '桃花滿開', hint: '眼睛底下藏了什麼',     text: '桃花眼加上淚痣，走在路上都會有人回頭。',
+   test: c => op(c, 'eyes') === 'peach' && c.moles.includes('tear') && (op(c, 'brows') === 'willow' || op(c, 'mouth') === 'full')},
+  {id: 'fortune',  name: '福祿壽全', hint: '耳、鼻、下巴都要有肉', text: '耳朵、鼻頭、下巴都厚，古書說的福相就是這樣。',
+   test: c => op(c, 'ears') === 'fortune' && ['gall', 'garlic'].includes(op(c, 'nose')) && ['double', 'round'].includes(op(c, 'chin'))},
+  {id: 'strategist', name: '軍師之相', hint: '會算、會看、會說',   text: '細長眼看得遠，鷹勾鼻算得精，薄唇講得清楚。',
+   test: c => op(c, 'eyes') === 'narrow' && op(c, 'nose') === 'hook' && op(c, 'mouth') === 'thin'},
+  {id: 'moon',     name: '眾星拱月', hint: '笑起來全場都放鬆',     text: '笑起來的時候，旁邊的人會不自覺跟著笑。',
+   test: c => op(c, 'mouth') === 'smile' && op(c, 'brows') === 'droop' && op(c, 'eyes') === 'apricot'},
+  {id: 'loner',    name: '獨行俠',   hint: '不跟任何人一樣',       text: '三白眼、招風耳、疏淡眉，你從來不需要別人點頭。',
+   test: c => op(c, 'eyes') === 'sanpaku' && op(c, 'ears') === 'protruding' && op(c, 'brows') === 'sparse'},
+  {id: 'late',     name: '大器晚成', hint: '福氣都存在後面',       text: '土形臉加上最長的下停，越往後走越好。',
+   test: (c, st, period) => period === 'lower' && op(c, 'face') === 'earth'},
+];
+function op(c, k) { return PARTS[k].options[c[k]].id; }
+
+const LIUNIAN = {
+  upper: {long: '額頭飽滿，這幾年是你的起跑期，學什麼都快，很容易被看見。',
+          mid:  '額頭平穩，求學和剛出社會的這段路走得踏實。',
+          short:'額頭比較收，年少時要多花點力氣，這段練出來的功夫會跟你很久。'},
+  mid:   {long: '鼻子長得有份量，這段是你的主場，事業和財運都在這時候拉開。',
+          mid:  '中年運平穩，按部就班就會有成果。',
+          short:'中段運勢收著走，適合累積，不急著衝。'},
+  lower: {long: '下巴有份量，晚年福氣厚，身邊會一直有人陪。',
+          mid:  '晚年平順，前面種下的會慢慢收成。',
+          short:'下停比較短，晚年要早點規劃，現在存的都是以後的底氣。'},
+};
+const ZONE_NAME = {upper: '上停・額頭', mid: '中停・鼻子', lower: '下停・下巴'};
+
+const RELS = [{id: 'love', name: '情侶／曖昧'}, {id: 'friend', name: '朋友'}, {id: 'work', name: '同事'}];
+const PAIR_TITLES = [
+  [90, {love: '命中注定',     friend: '上輩子就認識',   work: '夢幻拍檔'}],
+  [80, {love: '天作之合',     friend: '鐵哥們／好姐妹', work: '默契組合'}],
+  [70, {love: '越相處越甜',   friend: '吃飯固定班底',   work: '分工剛剛好'}],
+  [60, {love: '歡喜冤家',     friend: '吵不散的損友',   work: '互相磨練中'}],
+  [45, {love: '需要翻譯機',   friend: '平行宇宙的朋友', work: '最好寫成文字溝通'}],
+  [30, {love: '月老在打瞌睡', friend: '只有團購時是朋友', work: '開會請坐對角線'}],
+  [0,  {love: '宇宙級反差萌', friend: '互為對方的修行', work: '建議只用 email 交流'}],
+];
+const QUIPS = ['我看相三十年，第一次看到這種組合。', '這盤我要拍照留念。', '兩位能坐在同一張桌子，已經是緣分了。', '反差這麼大的組合，故事通常最精彩。'];
+// 五行：木→火→土→金→水→木 相生
+const GEN = {木形: '火形', 火形: '土形', 土形: '金形', 金形: '水形', 水形: '木形'};
+const RUB = {  // 互相磨的組合（兩兩一組，不分先後）
+  '木形金形': '金形講效率、木形講理想，吵起來的時候先確認你們要的是同一件事。',
+  '土形木形': '木形想往前衝、土形想先站穩，訂計畫時把步調講好就不會互卡。',
+  '土形水形': '土形重原則、水形重彈性，遇到規則的事先各退一步。',
+  '水形火形': '水形冷靜、火形急，火氣上來的時候讓水形先開口。',
+  '火形金形': '火形想到就做、金形要先有計畫，讓金形負責收尾剛剛好。',
+};
+const PAIR_TEXT = {
+  egg: {tear: '兩個人都有淚痣，一樣感性，看電影會一起哭。', peach: '兩雙桃花眼對上，旁邊的人都覺得你們在放電。',
+        duo: '一個將帥一個軍師，一個衝前面一個想後面，天生的搭檔。', sanpaku: '兩個都是三白眼，主見都很強，認定了就一起衝。'},
+  complement: (y, f, x) => y + '的' + f + '剛好補上' + x + '比較弱的那一塊。',
+  gen: (g, r) => '臉型五行相生，' + g + '的個性會帶動' + r + '，相處起來很順。',
+  same: '同一型的臉，很多事不用解釋就懂。',
+  oval: n => n + '是鵝蛋臉，跟誰都配得來。',
+  bothOval: '兩個人都是鵝蛋臉，跟誰都配得來，跟彼此也是。',
+  common: o => '兩個人都是' + o + '，很多地方想法一樣。',
+  rub: (a, b) => a + '和' + b + '的個性會互相磨。',
+  sameMain: f => '兩個人都把' + f + '放第一，容易一起往同一邊衝，記得輪流踩煞車。',
+  sameWeak: f => f + '都是你們比較弱的一塊，這方面的事要一起多留意。',
+  gap: (h, f, l) => h + '的' + f + '比' + l + '旺很多，這方面的步調要先講好。',
+  fallback: '個性差不多，最大的考驗是誰先開口約對方。',
+};
+
+/* ---------- 角色編碼（放進網址） ---------- */
+const ENC_VER = 1;
+const ENC_PARTS = ['face', 'chin', 'brows', 'eyes', 'nose', 'mouth', 'ears', 'shoulder', 'hand', 'stance'];
+const ENC_TAIL = [['skin', SKINS.length], ['hair', HAIRS.length], ['hairColor', HAIR_COLORS.length], ['top', TOPS.length], ['bottom', BOTTOMS.length]];
+function encodeChar(c) {
+  const b = [ENC_VER];
+  ENC_PARTS.forEach(k => b.push(c[k]));
+  SLIDERS.forEach(s => b.push(Math.round(c[s.id] / 5)));
+  let m = 0; MOLES.forEach((x, i) => { if (c.moles.includes(x.id)) m |= 1 << i; }); b.push(m);
+  ENC_TAIL.forEach(([k]) => b.push(c[k]));
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeChar(s) {
+  try {
+    const t = atob(String(s).replace(/-/g, '+').replace(/_/g, '/'));
+    const b = [...t].map(x => x.charCodeAt(0));
+    if (!b.length || b[0] < 1 || b.length < 1 + ENC_PARTS.length) return null;
+    const c = defaultChar(); let i = 1;
+    const fit = (v, n) => (Number.isInteger(v) && v >= 0 && v < n) ? v : 0;
+    ENC_PARTS.forEach(k => { c[k] = fit(b[i++], PARTS[k].options.length); });
+    SLIDERS.forEach(sd => { const v = b[i++]; c[sd.id] = v === undefined ? 50 : Math.min(100, v * 5); });
+    const m = b[i++] || 0; c.moles = MOLES.filter((x, j) => m & (1 << j)).map(x => x.id).slice(0, 3);
+    ENC_TAIL.forEach(([k, n]) => { c[k] = fit(b[i++], n); });
+    return c;
+  } catch { return null; }
+}
+function hash32(str) { let h = 0x811c9dc5; for (const ch of str) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; } return h; }
+
+/* ---------- 相合度 ---------- */
+function pairScore(a, b, na, nb, rel) {
+  const ka = encodeChar(a), kb = encodeChar(b);
+  const swap = ka > kb;
+  const [x, y, kx, ky, nx, ny] = swap ? [b, a, kb, ka, nb, na] : [a, b, ka, kb, na, nb];
+  const jx = judge(x), jy = judge(y), h = hash32(kx + '|' + ky);
+  const hi = [], lo = [], part = {};
+  // 五行
+  const ex = PARTS.face.options[x.face].el, ey = PARTS.face.options[y.face].el;
+  if (ex === '鵝蛋臉' && ey === '鵝蛋臉') { part.el = 15; hi.push([2, PAIR_TEXT.bothOval]); }
+  else if (ex === '鵝蛋臉' || ey === '鵝蛋臉') { part.el = 15; hi.push([2, PAIR_TEXT.oval(ex === '鵝蛋臉' ? nx : ny)]); }
+  else if (ex === ey) { part.el = 18; hi.push([2, PAIR_TEXT.same]); }
+  else if (GEN[ex] === ey || GEN[ey] === ex) { part.el = 25; const g = GEN[ex] === ey ? nx : ny; hi.push([2, PAIR_TEXT.gen(g, g === nx ? ny : nx)]); }
+  else { part.el = 3; const key = [ex, ey].sort().join(''); lo.push([0, PAIR_TEXT.rub(ex, ey) + (RUB[key] || '')]); }
+  // 互補
+  part.comp = 0;
+  if (jx.weak === jy.main) { part.comp += 10; hi.push([1, PAIR_TEXT.complement(ny, FORT_NAME[jy.main], nx)]); }
+  if (jy.weak === jx.main) { part.comp += 10; hi.push([1, PAIR_TEXT.complement(nx, FORT_NAME[jx.main], ny)]); }
+  // 共同點
+  const same = ENC_PARTS.slice(0, 7).filter(k => x[k] === y[k]);
+  part.common = Math.min(16, same.length * 4);
+  if (same.length) hi.push([3, PAIR_TEXT.common(PARTS[same[0]].options[x[same[0]]].name)]);
+  // 彩蛋
+  const hx = jx.hidden && jx.hidden.id, hy = jy.hidden && jy.hidden.id;
+  let egg = null;
+  if (x.moles.includes('tear') && y.moles.includes('tear')) egg = 'tear';
+  else if (op(x, 'eyes') === 'peach' && op(y, 'eyes') === 'peach') egg = 'peach';
+  else if ((hx === 'general' && hy === 'strategist') || (hx === 'strategist' && hy === 'general')) egg = 'duo';
+  else if (op(x, 'eyes') === 'sanpaku' && op(y, 'eyes') === 'sanpaku') egg = 'sanpaku';
+  part.egg = egg ? 8 : 0;
+  if (egg) hi.push([0, PAIR_TEXT.egg[egg]]);
+  // 緣分值
+  part.luck = h % 40;
+  const score = Math.max(10, Math.min(99, 10 + part.el + part.comp + part.common + part.egg + part.luck));
+  // 磨合點
+  if (jx.main === jy.main) lo.push([1, PAIR_TEXT.sameMain(FORT_NAME[jx.main])]);
+  if (jx.weak === jy.weak) lo.push([2, PAIR_TEXT.sameWeak(FORT_NAME[jx.weak])]);
+  for (let i = 0; i < 4; i++) {
+    const d = jx.stars[i] - jy.stars[i];
+    if (Math.abs(d) >= 3) { lo.push([3, d > 0 ? PAIR_TEXT.gap(nx, FORT_NAME[i], ny) : PAIR_TEXT.gap(ny, FORT_NAME[i], nx)]); break; }
+  }
+  lo.push([9, PAIR_TEXT.fallback]);
+  hi.sort((p, q) => p[0] - q[0]); lo.sort((p, q) => p[0] - q[0]);
+  const title = PAIR_TITLES.find(t => score >= t[0])[1][rel] || '';
+  return {score, title, high: hi.length ? hi[0][1] : '你們湊在一起，相師傅也想看看會怎樣。', low: lo[0][1],
+          quip: score <= 30 ? QUIPS[h % QUIPS.length] : '', part, ja: swap ? jy : jx, jb: swap ? jx : jy};
+}
+
+/* ---------- 共用繪圖 ---------- */
+function drawFit(ctx, c, rect, x, y, w, h) {
+  prepare(c);
+  const s = Math.min(w / (rect[2] - rect[0]), h / (rect[3] - rect[1]));
+  ctx.save();
+  ctx.translate(x + (w - (rect[2] - rect[0]) * s) / 2 - rect[0] * s, y + (h - (rect[3] - rect[1]) * s) / 2 - rect[1] * s);
+  ctx.scale(s, s); ctx.imageSmoothingQuality = 'high'; drawFigure(ctx, c); ctx.restore();
+}
+function sizeCanvas(cv) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return null;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  return cv.getContext('2d');
+}
+function headPt(c, px, py) {
+  const k = AN.k, hK = 1 + sl(c.height, .05), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
+  const bx = AN.cx + (px - HD.cx) * k, by = AN.top + (py - HD.top) * k;
+  return [AN.cx + (bx - AN.cx) * hK, Z.ground + (by - lift - Z.ground) * hK, k * hK];
+}
+
+/* ---------- 流年 ---------- */
+function zoneOfAge(a) { return a <= 30 ? 'upper' : a <= 50 ? 'mid' : 'lower'; }
+function drawLiunian() {
+  const age = +$('lnAge').value, z = zoneOfAge(age), v = ch[z];
+  $('lnAgeTx').textContent = age + ' 歲';
+  $('lnText').innerHTML = '<b>' + ZONE_NAME[z] + '</b>　' + LIUNIAN[z][v >= 60 ? 'long' : v <= 40 ? 'short' : 'mid'];
+  const r = paint($('lnView'), ch, camFor('head', ch)); if (!r) return;
+  const range = {upper: [HD.top + 20, 345], mid: [345, 565], lower: [565, chinYOf(ch) - 5]}[z];
+  const [px, py, k] = headPt(ch, HD.cx, (range[0] + range[1]) / 2), ry = (range[1] - range[0]) / 2 * k, rx = 235 * k;
+  const g = r.ctx.createRadialGradient(px, py, 0, px, py, Math.max(rx, ry));
+  g.addColorStop(0, 'rgba(255,214,120,.55)'); g.addColorStop(.7, 'rgba(255,214,120,.25)'); g.addColorStop(1, 'rgba(255,214,120,0)');
+  r.ctx.save(); r.ctx.translate(px, py); r.ctx.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry)); r.ctx.translate(-px, -py);
+  r.ctx.fillStyle = g; r.ctx.beginPath(); r.ctx.arc(px, py, Math.max(rx, ry), 0, 7); r.ctx.fill(); r.ctx.restore();
+  r.ctx.strokeStyle = '#c9a24b'; r.ctx.lineWidth = 2.5 / r.s; r.ctx.setLineDash([8 / r.s, 6 / r.s]);
+  r.ctx.beginPath(); r.ctx.ellipse(px, py, rx, ry, 0, 0, 7); r.ctx.stroke(); r.ctx.setLineDash([]);
+}
+
+/* ---------- 合盤流程 ---------- */
+let pairCtx = null, pairSel = {rel: 'love', link: ''};
+const relName = id => (RELS.find(r => r.id === id) || RELS[0]).name;
+const cleanName = s => String(s || '').replace(/[<>&"]/g, '').trim().slice(0, 8);
+function baseUrl() { return location.href.split('#')[0]; }
+function makeLink(params) { return baseUrl() + '#' + new URLSearchParams(params).toString(); }
+async function shareLink(link, text) {
+  if (navigator.share && innerWidth < 820) {
+    try { await navigator.share({title: '從頭相到腳', text, url: link}); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+  }
+  return copyText(link);
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return 'copied'; } catch {}
+  const el = $('linkBox'); el.value = t; el.select();
+  try { document.execCommand('copy'); return 'copied'; } catch { return 'manual'; }
+}
+function openPairSheet() {
+  $('nickIn').value = store.nick || '';
+  pairSel.link = ''; $('linkRow').style.display = 'none'; $('sheetMsg').textContent = '';
+  renderRelSeg(); $('pairSheet').classList.add('on');
+}
+function renderRelSeg() { $('relSeg').innerHTML = RELS.map(r => '<button class="' + (r.id === pairSel.rel ? 'on' : '') + '" data-r="' + r.id + '">' + r.name + '</button>').join(''); }
+async function makeInvite() {
+  const n = cleanName($('nickIn').value); store.nick = n; persist();
+  const params = {p: encodeChar(ch), r: pairSel.rel}; if (n) params.n = n;
+  const link = pairSel.link = makeLink(params);
+  $('linkBox').value = link; $('linkRow').style.display = 'flex';
+  track('pair_create', pairSel.rel);
+  const res = await shareLink(link, (n || '我') + '捏了一個角色，換你捏捏看，看我們合不合');
+  $('sheetMsg').textContent = res === 'copied' ? '連結複製好了，貼給對方就可以。' : res === 'shared' ? '傳出去了！' : res === 'manual' ? '長按上面的連結複製。' : '';
+}
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  const a = q.get('p') && decodeChar(q.get('p'));
+  if (!a) return null;
+  const r = RELS.some(x => x.id === q.get('r')) ? q.get('r') : 'love';
+  const b = q.get('q') && decodeChar(q.get('q'));
+  return {a, b: b || null, na: cleanName(q.get('n')), nb: cleanName(q.get('m')), r, mode: b ? 'view' : 'invite'};
+}
+function showInvite() {
+  go('invite');
+  $('invTitle').textContent = (pairCtx.na || '有人') + '邀你合盤';
+  $('invRel').textContent = '關係：' + relName(pairCtx.r);
+  $('invNick').value = store.nick || '';
+  requestAnimationFrame(() => {
+    const ctx = sizeCanvas($('inviteView')); if (!ctx) return;
+    const off = mk(ctx.canvas.width, ctx.canvas.height), o = off.getContext('2d');
+    drawFit(o, pairCtx.a, CAM.full, 0, 0, off.width, off.height);
+    o.globalCompositeOperation = 'source-in'; o.fillStyle = '#5b4a57'; o.fillRect(0, 0, off.width, off.height);
+    ctx.drawImage(off, 0, 0);
+    ctx.fillStyle = '#fff'; ctx.font = '700 ' + Math.round(off.height * .07) + 'px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('？', off.width / 2, off.height * .13);
+  });
+  track('pair_open', pairCtx.r);
+}
+function pairNames() {
+  return pairCtx.mode === 'view' ? [pairCtx.na || '你', pairCtx.nb || '對方'] : [pairCtx.na || '對方', pairCtx.nb || '你'];
+}
+let pairRes = null, pairAnim = 0;
+function showPair() {
+  const [na, nb] = pairNames();
+  const p = pairRes = pairScore(pairCtx.a, pairCtx.b, na, nb, pairCtx.r);
+  go('pair'); $('pair').scrollTop = 0;
+  $('pRel').textContent = relName(pairCtx.r);
+  $('pNameA').textContent = na; $('pNameB').textContent = nb;
+  $('pTitleA').textContent = p.ja.prefix + '・' + p.ja.name; $('pTitleB').textContent = p.jb.prefix + '・' + p.jb.name;
+  $('pTitle').textContent = p.title; $('pHigh').textContent = p.high; $('pLow').textContent = p.low;
+  $('pStamp').classList.remove('on'); $('pQuip').textContent = '';
+  $('pBack').style.display = pairCtx.mode === 'invite' ? 'block' : 'none';
+  $('pMine').style.display = pairCtx.mode === 'view' ? 'block' : 'none';
+  $('pReturn').style.display = pairCtx.mode === 'invite' ? 'block' : 'none';
+  requestAnimationFrame(() => {
+    const ctx = sizeCanvas($('pairView')); if (!ctx) return;
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    drawFit(ctx, pairCtx.a, CAM.full, 0, h * .02, w / 2, h * .96);
+    drawFit(ctx, pairCtx.b, CAM.full, w / 2, h * .02, w / 2, h * .96);
+  });
+  const t0 = performance.now(), dur = 1300; let lastShown = -1;
+  cancelAnimationFrame(pairAnim);
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur), v = Math.round(10 + (p.score - 10) * (1 - Math.pow(1 - t, 3)));
+    if (v !== lastShown) { $('pScore').textContent = v; if (v % 3 === 0) snd.tick(); lastShown = v; }
+    if (t < 1) { pairAnim = requestAnimationFrame(step); return; }
+    if (p.score <= 30) { $('pStamp').classList.add('on'); $('pQuip').textContent = '相師傅：「' + p.quip + '」'; snd.deflate(); }
+    else if (p.score >= 80) snd.chime(); else snd.pop();
+  };
+  pairAnim = requestAnimationFrame(step);
+  track('pair_result', Math.floor(p.score / 10) * 10 + '-' + (Math.floor(p.score / 10) * 10 + 9));
+}
+function makePairCard() {
+  const p = pairRes, [na, nb] = pairNames();
+  const W = 1080, H = 1920, cv = mk(W, H), c = cv.getContext('2d'), F = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#fbe3ec'); g.addColorStop(1, '#fff3e4'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = 'rgba(255,255,255,.65)'; rr(c, 40, 40, W - 80, H - 80, 48); c.fill();
+  c.textAlign = 'center'; c.fillStyle = '#c9a24b'; c.font = '600 40px ' + F; c.fillText('從 頭 相 到 腳 ・ 合 盤', W / 2, 128);
+  c.fillStyle = '#8a7a86'; c.font = '34px ' + F; c.fillText(relName(pairCtx.r), W / 2, 188);
+  drawFit(c, pairCtx.a, CAM.full, 70, 230, 470, 880);
+  drawFit(c, pairCtx.b, CAM.full, 540, 230, 470, 880);
+  c.fillStyle = '#4a3b47'; c.font = '700 44px ' + F; c.fillText(na, 305, 1170); c.fillText(nb, 775, 1170);
+  c.fillStyle = '#8a7a86'; c.font = '30px ' + F; c.fillText(p.ja.name, 305, 1218); c.fillText(p.jb.name, 775, 1218);
+  c.fillStyle = '#e88aa8'; c.font = '800 190px ' + F; c.fillText(p.score, W / 2 - 30, 1420);
+  c.font = '700 60px ' + F; c.fillText('分', W / 2 + 120, 1420);
+  c.fillStyle = '#4a3b47'; c.font = '800 ' + (p.title.length > 6 ? 64 : 80) + 'px ' + F; c.fillText(p.title, W / 2, 1530);
+  if (p.score <= 30) {
+    c.save(); c.translate(860, 1300); c.rotate(-.18); c.strokeStyle = '#c0504d'; c.lineWidth = 8; rr(c, -120, -56, 240, 112, 16); c.stroke();
+    c.fillStyle = '#c0504d'; c.font = '800 54px ' + F; c.fillText('此盤稀有', 0, 20); c.restore();
+  }
+  c.fillStyle = '#fffaf5'; rr(c, 84, 1580, W - 168, 220, 32); c.fill();
+  c.textAlign = 'left'; c.font = '34px ' + F; c.fillStyle = '#4a3b47';
+  let y = wrapText(c, '亮點　' + p.high, 124, 1640, W - 248, 48);
+  wrapText(c, (p.quip ? '師傅說　' + p.quip : '磨合　' + p.low), 124, y + 6, W - 248, 48);
+  c.textAlign = 'center'; c.fillStyle = '#8a7a86'; c.font = '30px ' + F; c.fillText('從頭相到腳 ・ may22', W / 2, 1856);
+  return cv;
+}
+function saveCanvas(cv, name, kind) {
+  cv.toBlob(async blob => {
+    if (!blob) return;
+    const file = new File([blob], name, {type: 'image/png'});
+    track('share', kind);
+    if (navigator.canShare && navigator.canShare({files: [file]}) && innerWidth < 820) {
+      try { await navigator.share({files: [file], title: '從頭相到腳'}); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+}
+
+/* ---------- 圖鑑 ---------- */
+let dexTab = 'parts';
+const DEX_ASSET = {face: o => 'face_' + o.id + '_base', brows: o => 'brows_' + o.id, eyes: o => 'eyes_' + o.id, nose: o => 'nose_' + o.id,
+  mouth: o => 'mouth_' + o.id, ears: o => 'ears_' + o.id, hand: o => 'hand_' + o.id,
+  chin: o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_oval_' + o.id};
+function renderDex() {
+  const seen = new Set(store.seen || []), got = new Set(store.titles || []);
+  let h = '';
+  if (dexTab === 'parts') {
+    let n = 0, all = 0;
+    for (const k in PARTS) {
+      h += '<div class="group">' + PARTS[k].label + '</div><div class="dexgrid">';
+      for (const o of PARTS[k].options) {
+        const ok = seen.has(k + ':' + o.id); all++; if (ok) n++;
+        const aid = DEX_ASSET[k] && DEX_ASSET[k](o);
+        h += '<div class="dexitem' + (ok ? '' : ' lock') + '">' + (aid && IT[aid] ? '<img src="' + IT[aid].src + '" alt="">' : '') +
+             '<b>' + (ok ? o.name : '？？？') + '</b><small>' + (ok ? o.text : '看相時用過就會解鎖') + '</small></div>';
+      }
+      h += '</div>';
+    }
+    h += '<div class="group">痣</div><div class="dexgrid">' + MOLES.map(m => { const ok = seen.has('mole:' + m.id); all++; if (ok) n++;
+      return '<div class="dexitem' + (ok ? '' : ' lock') + '"><b>' + (ok ? m.name : '？？？') + '</b><small>' + (ok ? m.text : '看相時用過就會解鎖') + '</small></div>'; }).join('') + '</div>';
+    h = '<div class="note">已解鎖 ' + n + ' / ' + all + '</div>' + h;
+  } else if (dexTab === 'titles') {
+    let n = 0;
+    h += '<div class="group">基本稱號</div>';
+    for (const f of PARTS.face.options) {
+      h += '<div class="dexgrid" style="grid-template-columns:4.2em repeat(4,1fr);margin-bottom:6px"><div class="dexitem" style="background:none"><b>' + f.el + '</b></div>';
+      TITLES[f.el].forEach((t, i) => { const ok = got.has('T_' + f.id + '_' + i); if (ok) n++;
+        h += '<div class="dexitem' + (ok ? '' : ' lock') + '"><b>' + (ok ? t : '？？？') + '</b><small>' + FORT_NAME[i] + '</small></div>'; });
+      h += '</div>';
+    }
+    h += '<div class="group">隱藏稱號</div><div class="dexgrid" style="grid-template-columns:repeat(2,1fr)">';
+    for (const x of HIDDEN) { const ok = got.has('H_' + x.id); if (ok) n++;
+      h += '<div class="dexitem' + (ok ? '' : ' lock') + '"><b>' + (ok ? x.name : '？？？') + '</b><small>' + (ok ? x.text : '提示：' + x.hint) + '</small></div>'; }
+    h += '</div>';
+    h = '<div class="note">已收集 ' + n + ' / ' + (24 + HIDDEN.length) + '</div>' + h;
+  } else h = '<div class="note" style="text-align:center;margin-top:40px">相士攤位開放之後，上門的客人會收在這裡。</div>';
+  $('dexBody').innerHTML = h;
+  $('dexTabs').innerHTML = [['parts', '部位'], ['titles', '稱號'], ['guests', '客人']].map(t => '<button class="' + (t[0] === dexTab ? 'on' : '') + '" data-d="' + t[0] + '">' + t[1] + '</button>').join('');
+}
+function refreshHome() {
+  const has = (store.readings || 0) > 0;
+  $('dexBtn').disabled = !has; $('dexBtn').textContent = has ? '圖鑑' : '🔒 圖鑑（看相一次後開放）';
+}
+
+/* ---------- 事件 ---------- */
+$('lnAge').addEventListener('input', () => { snd.tick(); drawLiunian(); });
+$('pairBtn').onclick = openPairSheet;
+$('sheetClose').onclick = () => $('pairSheet').classList.remove('on');
+$('pairSheet').addEventListener('click', e => { if (e.target.id === 'pairSheet') $('pairSheet').classList.remove('on'); });
+$('relSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; pairSel.rel = b.dataset.r; snd.tick(); renderRelSeg(); pairSel.link = ''; $('linkRow').style.display = 'none'; });
+$('makeLink').onclick = makeInvite;
+$('copyLink').onclick = async () => { const r = await copyText($('linkBox').value); $('sheetMsg').textContent = r === 'copied' ? '複製好了。' : '長按上面的連結複製。'; };
+$('invStart').onclick = () => {
+  snd.init(); snd.bgm(true);
+  pairCtx.nb = cleanName($('invNick').value); if (pairCtx.nb) { store.nick = pairCtx.nb; persist(); }
+  go('make'); renderTabs(); renderPanel(); camNow = null; redraw(); track('start', 'invite');
+};
+$('pairGo').onclick = () => { pairCtx.b = JSON.parse(JSON.stringify(ch)); showPair(); };
+$('pSave').onclick = () => saveCanvas(makePairCard(), '從頭相到腳-合盤.png', 'pair');
+$('pReturn').onclick = async () => {
+  const params = {p: encodeChar(pairCtx.a), q: encodeChar(pairCtx.b), r: pairCtx.r};
+  if (pairCtx.na) params.n = pairCtx.na; if (pairCtx.nb) params.m = pairCtx.nb;
+  const link = makeLink(params); $('pLink').value = link; $('pLinkRow').style.display = 'flex';
+  const res = await shareLink(link, '我們的合盤結果出來了：' + pairRes.score + ' 分，' + pairRes.title);
+  $('pMsg').textContent = res === 'copied' ? '連結複製好了，傳給對方就能看到一樣的結果。' : res === 'shared' ? '傳出去了！' : '長按上面的連結複製。';
+  track('share', 'pair_return');
+};
+$('pBack').onclick = () => { go('result'); };
+$('pMine').onclick = () => { pairCtx = null; go('home'); refreshHome(); };
+$('pHome').onclick = () => { go('home'); refreshHome(); };
+$('dexBtn').onclick = () => { go('dex'); dexTab = 'parts'; renderDex(); $('dex').scrollTop = 0; };
+$('dexTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; dexTab = b.dataset.d; snd.tick(); renderDex(); $('dex').scrollTop = 0; });
+$('dexBack').onclick = () => go('home');
+
+checkCopy();
+loadImages().then(() => {
+  $('masterImg').src = IT.master.src; $('loading').textContent = ''; $('startBtn').disabled = false; refreshHome();
+  pairCtx = readHash();
+  if (pairCtx && pairCtx.mode === 'invite') showInvite();
+  else if (pairCtx) { track('pair_open', pairCtx.r); showPair(); }
+});
+addEventListener('hashchange', () => { const c = readHash(); if (!c) return; pairCtx = c; c.mode === 'invite' ? showInvite() : showPair(); });
+</script>
+</body>
+</html>
