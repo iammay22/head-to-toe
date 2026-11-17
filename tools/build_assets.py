@@ -346,7 +346,18 @@ def process_hair(base, base_alpha, hmask, chin):
         hal = hair_cut(a, al, shirt_full, face_full)
         gray = hair_gray(a, hal)
         ovp = np.vstack([np.ones((PAD, HS), np.float32), ov])
-        outs = [(name, hal)] if name.startswith('bangs_') else [(name + '_over', hal * ovp), (name + '_under', hal)]
+        if not name.startswith('bangs_'):
+            # 被臉、脖子、身體擋住的頭髮補起來：同一列左右兩邊都有頭髮，中間被擋住的地方填成較深的髮色
+            hair = hal > .5
+            occl = (al > .5) & ~hair
+            L = np.maximum.accumulate(hair, axis=1); R = np.maximum.accumulate(hair[:, ::-1], axis=1)[:, ::-1]
+            fill = occl & L & R
+            fill = ndi.binary_opening(fill, iterations=2)
+            fill = ndi.binary_dilation(fill, iterations=2) & ~hair
+            tone = np.median(gray[hair][:, 0]) * .72 if hair.any() else 150
+            gray = np.where(fill[..., None], tone, gray)
+            hal_under = np.maximum(hal, ndi.gaussian_filter(fill.astype(np.float32), .8))
+        outs = [(name, hal)] if name.startswith('bangs_') else [(name + '_over', hal * ovp), (name + '_under', hal_under)]
         for nm, m in outs:
             save_layer(nm, gray, m, 'head')
             if nm in ITEMS:
@@ -428,6 +439,20 @@ def process_head():
                 lim[box[0]:box[1], cx - box[2]:cx + box[2]] = True
                 inner = inner & lim
             col, al = cut_inner(new, base, inner)
+            if kind == 'eyes':   # 眼睛要實心：眼白跟皮膚很接近，差異算出來是半透明，把眼眶圍起來的地方補滿
+                solid = ndi.binary_fill_holes(ndi.binary_closing(al > .35, iterations=3)) & inner
+                col = np.where(solid[..., None], new, col)
+                al = np.maximum(al, ndi.gaussian_filter(solid.astype(np.float32), .8))
+            if kind == 'mouth':   # 只留嘴唇（偏紅）和深色的線，臉頰、下巴的陰影不要
+                sk = np.array(SKIN)
+                lips = ((new[..., 0] - new[..., 1]) - (sk[0] - sk[1]) > 20) | (lum(new) < lum(sk[None, None]) [0, 0] - 55)
+                lips &= al > .15
+                lab, n = ndi.label(ndi.binary_closing(lips, iterations=2))
+                if n:
+                    sz = ndi.sum(lips, lab, range(1, n + 1))
+                    lips = np.isin(lab, [i + 1 for i, v in enumerate(sz) if v >= 60])
+                keep = ndi.gaussian_filter(ndi.binary_dilation(lips, iterations=2).astype(np.float32), 1)
+                al = al * keep
             save_layer(name, col, al, 'head')
         elif kind == 'ears':   # 耳朵只留臉外側那兩塊，臉本身的差異不要
             al = cut_outer(new, new_alpha, base, base_alpha)

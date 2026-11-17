@@ -561,8 +561,8 @@ const HD = META.head, BD = META.body, AN = BD.anchor, Z = BD.zones, SK0 = META.s
 const OY = 220, HC_W = HD.size, HC_H = 1800;
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const skinC = mk(HC_W, HC_H), headC = mk(HC_W, HC_H), backC = mk(HC_W, HC_H), tmpC = mk(HC_W, HC_H), bodyC = mk(BD.w, BD.h);
-const cache = {skin: '', head: '', body: '', hair: '', fig: ''};
-const hairFC = mk(HC_W, HC_H);
+const cache = {skin: '', head: '', body: '', hair: '', fig: '', ear: ''};
+const hairFC = mk(HC_W, HC_H), bangsC = mk(HC_W, HC_H), earC = mk(HC_W, HC_H);
 const sm = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
 const sl = (v, amt) => (v - 50) / 50 * amt;
 
@@ -630,13 +630,12 @@ function renderHead(c) {
   const fid = faceId(c), fm = META.faces[fid] || {hwEar: HD.hwEar};
   const earId = 'ears_' + PARTS.ears.options[c.ears].id, earDx = (fm.hwEar || HD.hwEar) - HD.hwEar;
   const lowK = 1 + sl(c.lower, .07), fy = sl(c.featY, 14);
-  const skinKey = [fid, earId, c.skin, c.lower, c.featY, c.gender].join('|');
+  const skinKey = [fid, c.skin, c.lower, c.featY, c.gender].join('|');
   if (cache.skin !== skinKey) {
     const s = skinC.getContext('2d', {willReadFrequently: true}); s.clearRect(0, 0, HC_W, 1300); s.save(); s.translate(0, OY);
     // 脖子用頭部特寫裡的高解析度版本，墊在臉下面，接縫才不會糊
     const nk = c.gender === 1 && IT.neck_m ? 'neck_m' : 'neck_f';
     if (IMG[nk]) { const n = IT[nk]; s.drawImage(IMG[nk], n.x, n.y + (HD.chin - STRETCH_Y) * (lowK - 1), n.w, n.h); }
-    drawPair(s, earId, {dx: earDx, dy: fy});
     const it = IT[fid], im = IMG[fid], ry = im.naturalHeight / it.h, hTop = STRETCH_Y - it.y;
     s.drawImage(im, 0, 0, im.naturalWidth, hTop * ry, it.x, it.y, it.w, hTop);
     s.drawImage(im, 0, hTop * ry, im.naturalWidth, (it.h - hTop) * ry, it.x, STRETCH_Y - .5, it.w, (it.h - hTop) * lowK + .5);
@@ -644,16 +643,24 @@ function renderHead(c) {
     const d = s.getImageData(0, OY, HC_W, 1060); recolorSkin(d.data, SKINS[c.skin], 95, 55, true); s.putImageData(d, 0, OY);
     cache.skin = skinKey;
   }
+  // 耳朵自己一層：畫在後髮前面、前髮後面，一樣跟著膚色換
+  const earKey = [earId, earDx, fy, c.skin].join('|');
+  if (cache.ear !== earKey) {
+    const e = earC.getContext('2d', {willReadFrequently: true}); e.clearRect(0, 0, HC_W, HC_H); e.save(); e.translate(0, OY);
+    drawPair(e, earId, {dx: earDx, dy: fy}); e.restore();
+    if (c.skin) { const d = e.getImageData(0, OY, HC_W, 1060); recolorSkin(d.data, SKINS[c.skin], 95, 55, true); e.putImageData(d, 0, OY); }
+    cache.ear = earKey;
+  }
   const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0, HC_W, 1300, 0, 0, HC_W, 1300); h.save(); h.translate(0, OY);
   const chinY = chinYOf(c), cid = PARTS.chin.options[c.chin].id;
   if (cid === 'double' || cid === 'cleft') { const m = IT['chinmark_' + cid]; h.drawImage(IMG['chinmark_' + cid], m.x, m.y + chinY, m.w, m.h); }
   const eyeDy = sl(c.upper, 22) + fy;
-  drawPair(h, 'brows_' + PARTS.brows.options[c.brows].id, {dx: sl(c.browDist, 14), dy: eyeDy});
   // 眼睛圖層邊緣帶一點原本的膚色和腮紅，跟著膚色一起換（只動亮的部分，不動瞳孔和眼線）
   const t = tmpC.getContext('2d', {willReadFrequently: true}); t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, HC_W, 700);
   drawPair(t, 'eyes_' + PARTS.eyes.options[c.eyes].id, {dy: eyeDy, scale: 1 + sl(c.eyeSize, .15)});
   if (c.skin) { const ed = t.getImageData(0, 250, HC_W, 340); recolorSkin(ed.data, SKINS[c.skin], 150, 60); t.putImageData(ed, 0, 250); }
   h.drawImage(tmpC, 0, 0, HC_W, 700, 0, 0, HC_W, 700);
+  drawPair(h, 'brows_' + PARTS.brows.options[c.brows].id, {dx: sl(c.browDist, 14), dy: eyeDy});   // 眉毛壓在眼睛上面
   const nid = 'nose_' + PARTS.nose.options[c.nose].id, n = IT[nid], nK = 1 + sl(c.mid, .15), nW = 1 + sl(c.noseWidth, .18);
   const nTop = n.y + eyeDy * .6;
   h.drawImage(IMG[nid], HD.cx - (HD.cx - n.x) * nW, nTop, n.w * nW, n.h * nK);
@@ -666,23 +673,26 @@ function renderHead(c) {
   const pos = {brow: [HD.cx - 118, 338 + eyeDy], tear: [HD.cx + 196, 462 + eyeDy], nose: [HD.cx + 16, nTop + n.h * nK * .72],
                mouth: [HD.cx + 76, mcy + 16], chin: [HD.cx - 22, chinY - 46], lobe: [HD.cx - hw - 26, 498 + fy]};
   h.fillStyle = '#4a2c2a';
-  for (const id of c.moles) { const p = pos[id]; h.beginPath(); h.arc(p[0], p[1], 6, 0, 7); h.fill(); }
+  for (const id of c.moles) { const p = pos[id]; h.beginPath(); h.arc(p[0], p[1], 4, 0, 7); h.fill(); }
   h.restore();
   // 頭髮
   const hid = HAIRS[c.hair].id, bid = BANGS[c.bang || 0].id, hairKey = hid + '|' + bid + '|' + c.hairColor;
   if (cache.hair !== hairKey) {
-    const b = backC.getContext('2d'), f = hairFC.getContext('2d'), col = HAIR_COLORS[c.hairColor];
-    b.clearRect(0, 0, HC_W, HC_H); f.clearRect(0, 0, HC_W, HC_H);
+    const b = backC.getContext('2d'), f = hairFC.getContext('2d'), g = bangsC.getContext('2d'), col = HAIR_COLORS[c.hairColor];
+    b.clearRect(0, 0, HC_W, HC_H); f.clearRect(0, 0, HC_W, HC_H); g.clearRect(0, 0, HC_W, HC_H);
     const pick = (...ids) => ids.find(id => IMG[id] && !IT[id].ph) || ids.find(id => IMG[id]);
     if (hid !== 'none') {
       const under = pick('hairback_' + hid + '_under', 'hair_' + hid + '_back'), over = pick('hairback_' + hid + '_over', 'hair_' + hid + '_front');
       if (under) b.drawImage(tinted(under, col), 0, 0);
       if (over) f.drawImage(tinted(over, col), 0, 0);
     }
-    if (bid !== 'none' && IMG['bangs_' + bid]) f.drawImage(tinted('bangs_' + bid, col), 0, 0);
+    if (bid !== 'none' && IMG['bangs_' + bid]) g.drawImage(tinted('bangs_' + bid, col), 0, 0);
     cache.hair = hairKey;
   }
-  if (hid !== 'none' || bid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, usedH(c), 0, 0, HC_W, usedH(c));
+  const uh = usedH(c);
+  if (hid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, uh, 0, 0, HC_W, uh);   // 後髮在臉前面的部分
+  h.drawImage(earC, 0, 0, HC_W, uh, 0, 0, HC_W, uh);                          // 耳朵
+  if (bid !== 'none') h.drawImage(bangsC, 0, 0, HC_W, uh, 0, 0, HC_W, uh);   // 前髮
 }
 // 手的特寫跟著膚色換色，換過的存起來
 const handCache = {};
