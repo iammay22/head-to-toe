@@ -159,6 +159,43 @@ def extract_neck(a, alpha, hm, chin, cx, fade=None):
     return col, ndi.gaussian_filter(al, .6)
 
 
+def geo_low(a, alpha):
+    """頭髮蓋住額頭時，改量下巴和臉頰（下巴往上 150 那一列）的寬度。"""
+    m = (alpha > .9) & (lum(a) > 150) & (a[..., 0] - a[..., 2] > 14)
+    lab, _ = ndi.label(m)
+    k = lab[600, 512]
+    if k == 0:
+        raise SystemExit('找不到臉')
+    f = lab == k
+    chin = int(np.where(f.any(1))[0].max())
+    xx = np.where(f[chin - 150])[0]
+    return dict(chin=chin, w=float(xx.max() - xx.min()), cx=float((xx.max() + xx.min()) / 2))
+
+
+def hair_cut(a, alpha, shirt, face_in=None):
+    """用顏色切頭髮：灰色、不是皮膚、不在衣服範圍裡；再把頭髮旁邊的深色外框線補回來。"""
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    mx, mn = a.max(2), a.min(2)
+    core = (((np.abs(r - b) < 10) & (np.abs(r - g) < 16)) | ((lum(a) > 200) & (mx - mn < 34) & (r - b < 20))) & (alpha > .5) & (lum(a) > 85) & ~shirt
+    core = ndi.binary_opening(core, iterations=1)
+    if face_in is not None:   # 臉裡面那種細細的反光線不是頭髮
+        core = (core & ~face_in) | (ndi.binary_opening(core & face_in, iterations=3))
+    lab, n = ndi.label(core)
+    if n:
+        sz = ndi.sum(core, lab, range(1, n + 1))
+        core = np.isin(lab, [i + 1 for i, v in enumerate(sz) if v >= 400])
+    line = ndi.binary_dilation(core, iterations=4) & (alpha > .5) & (lum(a) < 140) & ~shirt
+    m = ndi.binary_closing(core | line, iterations=2) & (alpha > .3)
+    holes = ndi.binary_fill_holes(m) & ~m   # 頭髮上的亮點不能變成洞（會露出底下光頭的反光）
+    lab, n = ndi.label(holes)
+    if n:
+        sz = ndi.sum(holes, lab, range(1, n + 1))
+        m |= np.isin(lab, [i + 1 for i, v in enumerate(sz) if v < 3000])
+    if face_in is not None:   # 最後再掃一次臉附近的細線
+        m = (m & ~face_in) | ndi.binary_opening(m & face_in, iterations=3)
+    return ndi.gaussian_filter(m.astype(np.float32), .7) * alpha
+
+
 def hair_gray(rgb, al):
     """頭髮統一轉成淺灰，遊戲裡再用乘法上色，才能換髮色。"""
     l = lum(rgb)
@@ -187,6 +224,7 @@ def save_layer(id_, rgb, alpha, space, extra=None, quality=92):
 
 
 FY = (lambda y: y, 1.0)
+HAIR_RAW = {}
 ALIGN_FACES = {'face_earth', 'face_fire'}   # 這幾張是後來另外畫的，頭的大小跟標準頭不同，要先對齊
 
 
@@ -244,6 +282,79 @@ def cut_outer(new, new_alpha, base, base_alpha, thr=40, grow=4):
 
 
 # ---------- 頭部 ----------
+def face_of(a, alpha):
+    return face_component(a, alpha, (HS // 2, 400))
+
+
+def process_hair(base, base_alpha, hmask, chin):
+    """前髮、後髮：先用下巴和臉頰寬度對齊到標準頭，再用顏色切出頭髮。
+    頭髮蓋住臉頰的圖量不到真的寬度，用同一批（下巴位置一樣）的圖裡最寬的那個。"""
+    if not HAIR_RAW:
+        return
+    ref = geo_low(base, base_alpha)
+    geos = {}
+    for name, (a, al) in HAIR_RAW.items():
+        try:
+            geos[name] = geo_low(a, al)
+        except SystemExit:
+            LOG.append(f'!! {name}: 找不到臉，略過'); continue
+    yy = np.arange(HS)[:, None]
+    shirt0 = (base_alpha > .5) & (np.abs(base[..., 0] - base[..., 2]) < 12) & (yy > chin + 80)
+    shirt = ndi.binary_dilation(shirt0, iterations=10)
+    face_in = ndi.binary_dilation(face_of(base, base_alpha), iterations=14)
+    body_sil = ndi.binary_dilation((base_alpha > .5) & (yy > chin + 60), iterations=25)
+    near = ndi.binary_dilation(hmask, iterations=55); near[chin - 30:] = False
+    ov = ndi.gaussian_filter(near.astype(np.float32), 3)
+    for name, g in geos.items():
+        a, al = HAIR_RAW[name]
+        w = max(v['w'] for v in geos.values() if abs(v['chin'] - g['chin']) <= 4)
+        sx = ref['w'] / w
+        PAD = 260
+        def warp(sy):
+            # 輸出座標 (Y, X)，Y 從 -PAD 開始；以下巴為基準點縮放
+            off = (g['chin'] - (ref['chin'] + PAD) / sy, g['cx'] - ref['cx'] / sx)
+            tf = lambda ch: ndi.affine_transform(ch, (1 / sy, 1 / sx), offset=off, order=1, output_shape=(HS + PAD, HS), mode='constant', cval=0.0)
+            return np.dstack([tf(a0[..., i]) for i in range(3)]), np.clip(tf(al0), 0, 1)
+        a0, al0 = a, al
+        a, al = warp(sx)
+        # 頭頂檢查：標準頭在臉旁邊那條直線上的頭頂，如果比這張圖的頭髮還高，就把這張圖往上拉長
+        worst = None
+        for xc in range(int(ref['cx']) - 170, int(ref['cx']) + 171, 10):
+            btop = int(np.where(base_alpha[:, xc] > .5)[0].min())
+            hcol = np.where(al[:, xc] > .5)[0]
+            if len(hcol) and (worst is None or hcol.min() - PAD - btop > worst[0]):
+                worst = (hcol.min() - PAD - btop, hcol.min() - PAD, btop)
+        if worst and worst[0] > -6:
+            htop, btop = worst[1], worst[2]
+            sy = sx * (ref['chin'] - (btop - 10)) / (ref['chin'] - htop)
+            a, al = warp(sy)
+            moved = (round(sx, 3), round(sy, 3))
+        else:
+            moved = (round(sx, 3), round(sx, 3))
+        a, al = a[PAD:], al[PAD:]   # 先切回標準大小算衣服，頭頂多出來的另外留
+        a_top, al_top = warp(moved[1])
+        # 每張圖自己的衣服：下巴下面中線第一個灰色的列是領口，往上 110 以下、標準人身體範圍內的灰色都算衣服
+        r_, g_, b_ = a[..., 0], a[..., 1], a[..., 2]
+        grayp = (np.abs(r_ - b_) < 10) & (np.abs(r_ - g_) < 16) & (al > .5)
+        col = np.where(grayp[ref['chin'] + 40:, int(ref['cx'])])[0]
+        collar = ref['chin'] + 40 + (int(col[0]) if len(col) else 300)
+        shirt_i = grayp & (yy > collar - 110) & body_sil
+        shirt_i = ndi.binary_dilation(shirt_i, iterations=3) & (yy > collar - 115)
+        shirt_full = np.vstack([np.zeros((PAD, HS), bool), shirt_i])
+        face_full = np.vstack([np.zeros((PAD, HS), bool), face_in])
+        a, al = a_top, al_top
+        hal = hair_cut(a, al, shirt_full, face_full)
+        gray = hair_gray(a, hal)
+        ovp = np.vstack([np.ones((PAD, HS), np.float32), ov])
+        outs = [(name, hal)] if name.startswith('bangs_') else [(name + '_over', hal * ovp), (name + '_under', hal)]
+        for nm, m in outs:
+            save_layer(nm, gray, m, 'head')
+            if nm in ITEMS:
+                ITEMS[nm]['y'] -= PAD
+        if moved:
+            LOG[-1] += f'  對齊 {moved}'
+
+
 def process_head():
     global SKIN
     d = os.path.join(RAW, 'head')
@@ -254,6 +365,7 @@ def process_head():
     SKIN = tuple(float(v) for v in np.median(base[300:380, 450:574].reshape(-1, 3), 0).round(1))
     seed = (HS // 2, 400)
     ref_geo = face_geo(base, base_alpha)
+    HAIR_RAW.clear()
     hmask, face = head_mask(base, base_alpha, seed, 12)
     inner_base = ndi.binary_erosion(face, iterations=8)
     soft = lambda m: ndi.gaussian_filter(m.astype(np.float32), 0.8)
@@ -274,6 +386,9 @@ def process_head():
         new, new_alpha = key(new)
         new, gain = normalize_skin(new, patch, SKIN)
         kind = name.split('_')[0]
+        if kind in ('bangs', 'hairback'):
+            HAIR_RAW[name] = (new, new_alpha)
+            continue
         try:
             if kind == 'face' and '_chin_' not in name and name not in ALIGN_FACES:
                 raise SystemExit   # 各臉型本來就跟標準頭畫在一起，寬窄是臉型本身，不能拉
@@ -343,6 +458,7 @@ def process_head():
             LOG.append(f'!! raw/head/{name}: 看不懂的檔名，略過')
             continue
         LOG.append(f'      └ {note}')
+    process_hair(base, base_alpha, hmask, int(np.where(face)[0].max()))
     eyes = [v for k, v in ITEMS.items() if k.startswith('eyes_') and not v['ph']]
     geo['eyeY'] = float(np.mean([v['y'] + v['h'] / 2 for v in eyes])) if eyes else 408.0
     return geo, base, base_alpha
