@@ -119,7 +119,23 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
 .dexitem{background:var(--card);border-radius:12px;padding:8px 6px;font-size:13px;text-align:center;min-height:64px;display:flex;flex-direction:column;justify-content:center;gap:2px}
 .dexitem.lock{opacity:.45}.dexitem.lock img{filter:grayscale(1)}.dexitem img{height:38px;object-fit:contain}.dexitem small{font-size:11px;opacity:.75;line-height:1.45}
 .dextop{display:flex;align-items:center;gap:10px;margin:4px 0 8px}
-@media (min-width:820px){
+.bhud{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;padding:0 12px 6px;font-size:13px;flex:none}.bhud b{font-size:15px;margin-right:auto}
+.bstage{flex:1;min-height:150px;position:relative;margin:0 10px;border-radius:var(--radius);overflow:hidden}
+#bView{width:100%;height:100%;display:block}
+.bsign{position:absolute;left:8px;top:8px;background:rgba(255,250,245,.9);border-radius:10px;padding:3px 9px;font-size:13px;font-weight:600}
+.bprop{position:absolute;right:10px;top:6px;font-size:40px}
+.spot{position:absolute;transform:translate(-50%,-50%);min-width:26px;height:24px;padding:0 6px;border-radius:12px;background:rgba(232,138,168,.92);color:#fff;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 0 rgba(74,59,71,.25);white-space:nowrap}
+.spot:disabled{opacity:.55}.spot.sel{background:var(--text);opacity:1}.spot.best{background:var(--gold);opacity:1}
+.spot.hand{left:10px;bottom:10%;top:auto;transform:none;height:auto;padding:4px 8px;display:flex;flex-direction:column;align-items:center;background:rgba(255,250,245,.95);color:var(--text)}
+.spot.hand img{width:44px;height:44px}.spot.hand.sel{background:#e9dde3;border-color:var(--text)}.spot.hand.best{background:#f6e7b8;border-color:var(--gold)}
+.bdialog{flex:none;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:52dvh;overflow-y:auto}
+.bline{background:var(--card);border-radius:14px;padding:10px 12px;font-size:15.5px;line-height:1.6}
+#bOpts{display:flex;flex-direction:column;gap:11px;padding-bottom:5px}#bOpts:empty{display:none}#bOpts .btn{padding:11px;font-size:15.5px}
+.adv{display:flex;gap:8px}.adv .btn{flex:1;padding:12px 2px!important}
+.fb{border-radius:12px;padding:8px 10px;font-size:13.5px;line-height:1.6;margin-bottom:6px}.fb.ok{background:#e4f3e6}.fb.ng{background:#fbe9e6}
+.gain{text-align:center;font-weight:700;color:var(--gold);font-size:16px}.lvup{text-align:center;font-weight:700;color:var(--pink);margin-top:4px}
+#bNext{margin-bottom:5px}
+@media (min-width:820px){#booth{max-width:560px;margin:0 auto;width:100%}
   body{max-width:1080px;margin:0 auto}
   #make.active{display:grid;grid-template-columns:1fr 420px;grid-template-rows:auto 1fr auto;column-gap:6px}
   #make .stage{grid-row:1/4;margin:0 0 8px 10px}
@@ -136,7 +152,7 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
     <p>捏一個從頭到腳的角色，讓相師傅看看這張臉、這副身形藏了什麼運。</p>
     <div class="menu">
       <button class="btn main" id="startBtn" disabled>開始捏人</button>
-      <button class="btn" disabled>🔒 相士攤位（之後開放）</button>
+      <button class="btn" id="boothBtn" disabled>🔒 相士攤位（看相一次後開放）</button>
       <button class="btn" id="dexBtn" disabled>🔒 圖鑑（看相一次後開放）</button>
     </div>
     <div id="loading">素材準備中…</div>
@@ -211,6 +227,12 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
       <button class="btn" id="pMine">我也來捏一個</button>
       <button class="btn" id="pHome">回首頁</button>
     </div>
+  </section>
+
+  <section class="screen" id="booth">
+    <div class="bhud"><b id="bName"></b><span id="bRep"></span><span id="bCoin"></span><span id="bNo"></span></div>
+    <div class="bstage" id="bStage"><canvas id="bView"></canvas><div id="bSpots"></div><div class="bsign" id="bSign"></div><div class="bprop" id="bProp"></div></div>
+    <div class="bdialog"><div class="bline" id="bLine"></div><div class="note" id="bStep"></div><div id="bOpts"></div><div id="bFeed"></div><button class="btn main" id="bNext" style="display:none">下一位</button></div>
   </section>
 
   <section class="screen" id="dex">
@@ -400,15 +422,16 @@ const BOTTOMS = [
   {name: '牛仔褲', c: [92,116,156]}, {name: '黑長褲', c: [62,60,68]}, {name: '卡其褲', c: [202,178,142]},
   {name: '牛仔短褲', c: [92,116,156], short: 1}, {name: '白短褲', c: [248,248,248], short: 1},
 ];
+const GENDERS = ['女生', '男生'];
 const TABS = [
-  ['face', '臉型', 'head'], ['chin', '下巴', 'head'], ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
+  ['gender', '性別', 'full'],  ['face', '臉型', 'head'], ['chin', '下巴', 'head'], ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
   ['nose', '鼻', 'head'], ['mouth', '嘴', 'head'], ['ears', '耳', 'head'], ['moles', '痣', 'head'],
   ['ratio', '比例', 'head'], ['hair', '髮型', 'head'], ['skin', '膚色', 'full'], ['body', '身體', 'full'], ['clothes', '服裝', 'full'],
 ];
 
 /* ================= 判定（只讀上面的表，不含隨機） ================= */
 function defaultChar() {
-  const c = {moles: [], skin: 0, hair: 2, hairColor: 1, top: 0, bottom: 0};
+  const c = {gender: 0, moles: [], skin: 0, hair: 2, hairColor: 1, top: 0, bottom: 0};
   for (const k in PARTS) c[k] = 0;
   for (const s of SLIDERS) c[s.id] = 50;
   return c;
@@ -448,6 +471,7 @@ function judge(c) {
 function checkCopy() {
   const all = [JOKE, ...SAY, ...Object.values(PERIOD_TEXT), ...Object.values(SLIDER_TEXT), ...LUCK_TEXT.flat(),
     ...Object.values(SUMMARY).flatMap(o => Object.values(o)), ...Object.values(TITLES).flat(),
+    ...BOOTH_Q.flat(), ...Object.values(BOOTH_Q2), ...ADVICE, ...ADV_WHY, ...BOOTH_GOOD, ...BOOTH_LEVELS.map(l => l.name), ...GUESTS.flatMap(g => [g.name, g.line, g.good, g.bad, g.dex, ...g.opts]),
     ...MOLES.map(m => m.name + m.text), ...HIDDEN.map(h => h.name + h.hint + h.text), ...Object.values(LIUNIAN).flatMap(o => Object.values(o)),
     ...PAIR_TITLES.flatMap(t => Object.values(t[1])), ...QUIPS, ...Object.values(RUB), ...Object.values(PAIR_TEXT).filter(v => typeof v === 'string'), ...Object.values(PAIR_TEXT.egg), ...Object.values(PARTS).flatMap(p => p.options.map(o => o.name + o.text))];
   let bad = 0;
@@ -490,6 +514,8 @@ const snd = {
   pop() { this.tone(620, .09, 'sine', .14, 300); },
   tick() { this.tone(1500, .025, 'square', .03); },
   wood() { this.tone(820, .09, 'triangle', .22, 620); this.tone(1640, .04, 'square', .04); },
+  coin() { [1320, 1760, 2090].forEach((f, i) => this.tone(f, .16, 'triangle', .1, 0, i * .07)); },
+  hmm() { this.tone(210, .32, 'sine', .14, 290); },
   deflate() { this.tone(330, .8, 'sawtooth', .06, 70); this.tone(220, .5, 'triangle', .06, 90, .2); },
   chime() { [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, .5, 'sine', .1, 0, i * .09)); },
   bgm(on) {
@@ -506,12 +532,15 @@ const HD = META.head, BD = META.body, AN = BD.anchor, Z = BD.zones, SK0 = META.s
 const OY = 220, HC_W = HD.size, HC_H = 1800;
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const skinC = mk(HC_W, HC_H), headC = mk(HC_W, HC_H), backC = mk(HC_W, HC_H), tmpC = mk(HC_W, HC_H), bodyC = mk(BD.w, BD.h);
-const cache = {skin: '', head: '', body: ''};
+const cache = {skin: '', head: '', body: '', hair: '', fig: ''};
+const hairFC = mk(HC_W, HC_H);
 const sm = (a, b, t) => { const x = Math.min(1, Math.max(0, (t - a) / (b - a))); return x * x * (3 - 2 * x); };
 const sl = (v, amt) => (v - 50) / 50 * amt;
 
 function loadImages() {
   return Promise.all(Object.keys(IT).map(id => new Promise(res => {
+    try { const [hd, d] = IT[id].src.split(','), bin = atob(d), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      IT[id].src = URL.createObjectURL(new Blob([arr], {type: hd.match(/:(.*?);/)[1]})); } catch (e) {}
     const im = new Image(); im.onload = () => { IMG[id] = im; res(); }; im.onerror = () => { console.error('素材載入失敗', id); res(); }; im.src = IT[id].src;
   })));
 }
@@ -556,12 +585,14 @@ function chinYOf(c) {
 }
 const STRETCH_Y = 560;
 function renderHead(c) {
+  const headKey = [faceId(c), c.ears, c.skin, c.chin, c.brows, c.eyes, c.nose, c.mouth, c.moles.join('.'), c.upper, c.mid, c.lower, c.browDist, c.eyeSize, c.noseWidth, c.mouthSize, c.featY, c.hair, c.hairColor].join('|');
+  if (cache.head === headKey) return; cache.head = headKey;
   const fid = faceId(c), fm = META.faces[fid] || {hwEar: HD.hwEar};
   const earId = 'ears_' + PARTS.ears.options[c.ears].id, earDx = (fm.hwEar || HD.hwEar) - HD.hwEar;
   const lowK = 1 + sl(c.lower, .07), fy = sl(c.featY, 14);
   const skinKey = [fid, earId, c.skin, c.lower, c.featY].join('|');
   if (cache.skin !== skinKey) {
-    const s = skinC.getContext('2d', {willReadFrequently: true}); s.clearRect(0, 0, HC_W, HC_H); s.save(); s.translate(0, OY);
+    const s = skinC.getContext('2d', {willReadFrequently: true}); s.clearRect(0, 0, HC_W, 1300); s.save(); s.translate(0, OY);
     drawPair(s, earId, {dx: earDx, dy: fy});
     const it = IT[fid], im = IMG[fid], ry = im.naturalHeight / it.h, hTop = STRETCH_Y - it.y;
     s.drawImage(im, 0, 0, im.naturalWidth, hTop * ry, it.x, it.y, it.w, hTop);
@@ -570,7 +601,7 @@ function renderHead(c) {
     const d = s.getImageData(0, OY, HC_W, 1000); recolorSkin(d.data, SKINS[c.skin]); s.putImageData(d, 0, OY);
     cache.skin = skinKey;
   }
-  const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0); h.save(); h.translate(0, OY);
+  const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0, HC_W, 1300, 0, 0, HC_W, 1300); h.save(); h.translate(0, OY);
   const chinY = chinYOf(c), cid = PARTS.chin.options[c.chin].id;
   if (cid === 'double' || cid === 'cleft') { const m = IT['chinmark_' + cid]; h.drawImage(IMG['chinmark_' + cid], m.x, m.y + chinY, m.w, m.h); }
   const eyeDy = sl(c.upper, 22) + fy;
@@ -591,13 +622,17 @@ function renderHead(c) {
   for (const id of c.moles) { const p = pos[id]; h.beginPath(); h.arc(p[0], p[1], 6, 0, 7); h.fill(); }
   h.restore();
   // 頭髮
-  const b = backC.getContext('2d'); b.clearRect(0, 0, HC_W, HC_H);
-  const hid = HAIRS[c.hair].id;
-  if (hid !== 'none') {
-    const col = HAIR_COLORS[c.hairColor];
-    if (IMG['hair_' + hid + '_back']) b.drawImage(tinted('hair_' + hid + '_back', col), 0, 0);
-    if (IMG['hair_' + hid + '_front']) h.drawImage(tinted('hair_' + hid + '_front', col), 0, 0);
+  const hid = HAIRS[c.hair].id, hairKey = hid + '|' + c.hairColor;
+  if (cache.hair !== hairKey) {
+    const b = backC.getContext('2d'), f = hairFC.getContext('2d'), col = HAIR_COLORS[c.hairColor];
+    b.clearRect(0, 0, HC_W, HC_H); f.clearRect(0, 0, HC_W, HC_H);
+    if (hid !== 'none') {
+      if (IMG['hair_' + hid + '_back']) b.drawImage(tinted('hair_' + hid + '_back', col), 0, 0);
+      if (IMG['hair_' + hid + '_front']) f.drawImage(tinted('hair_' + hid + '_front', col), 0, 0);
+    }
+    cache.hair = hairKey;
   }
+  if (hid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, usedH(c), 0, 0, HC_W, usedH(c));
 }
 function renderBody(c) {
   const key = [c.skin, c.top, c.bottom].join('|'); if (cache.body === key) return;
@@ -627,49 +662,72 @@ function renderBody(c) {
 }
 function prepare(c) { renderHead(c); renderBody(c); }
 // 把整個角色畫進 ctx（身體座標）。回傳頭部在身體座標裡的位置，給鏡頭用
-function drawFigure(ctx, c) {
-  const shK = [0, .08, -.06][c.shoulder], wK = 1 + sl(c.weight, .06), legK = 1 + sl(c.legs, .06), hK = 1 + sl(c.height, .05);
+function hKof(c) { return (1 + sl(c.height, .05)) * (c.gender === 1 ? 1.03 : 1); }
+// 把整個角色畫進 ctx（身體座標）
+const usedH = c => HAIRS[c.hair].id === 'long' ? 1580 : 1300;
+function drawFigure(ctx, c, part) {
+  const male = c.gender === 1, shK = [0, .08, -.06][c.shoulder], wK = 1 + sl(c.weight, .06), legK = 1 + sl(c.legs, .06), hK = hKof(c);
   const lift = (Z.ground - Z.hip) * (legK - 1), k = AN.k;
   ctx.save();
   ctx.translate(AN.cx, Z.ground); ctx.scale(hK, hK); ctx.translate(-AN.cx, -Z.ground - lift);
-  const hx = AN.cx - HD.cx * k, hy = AN.top - (HD.top + OY) * k;
-  ctx.drawImage(backC, hx, hy, HC_W * k, HC_H * k);
-  const step = 4;
-  for (let y = IT.body_base.y; y < BD.h; y += step) {
+  const hx = AN.cx - HD.cx * k, hy = AN.top - (HD.top + OY) * k, uh = usedH(c);
+  if (part !== 'head') {
+  if (HAIRS[c.hair].id !== 'none') ctx.drawImage(backC, 0, 0, HC_W, uh, hx, hy, HC_W * k, uh * k);
+  const xsAt = y => {
     const r = sm(Z.neck + 10, Z.shoulder + 30, y), rs = 1 - sm(620, 1000, y);
-    const xs = 1 + r * (wK * (1 + shK * rs) - 1);
-    const dy = y <= Z.hip ? y : Z.hip + (y - Z.hip) * legK;
-    ctx.drawImage(bodyC, 0, y, BD.w, step, AN.cx - AN.cx * xs, dy, BD.w * xs, step * (y < Z.hip ? 1 : legK) + .6);
+    let v = wK * (1 + shK * rs);
+    if (male) v *= (1 + .07 * rs) * (1 - .05 * sm(700, 950, y) * (1 - sm(1150, 1350, y)));
+    return 1 + r * (v - 1);
+  };
+  const strip = (y0, y1) => {
+    const xs = xsAt((y0 + y1) / 2), below = y0 >= Z.hip, dy = below ? Z.hip + (y0 - Z.hip) * legK : y0;
+    ctx.drawImage(bodyC, 0, y0, BD.w, y1 - y0, AN.cx - AN.cx * xs, dy, BD.w * xs, (y1 - y0) * (below ? legK : 1) + .6);
+  };
+  const y0 = IT.body_base.y;
+  if (!male && shK === 0 && wK === 1) { strip(y0, Z.hip); strip(Z.hip, BD.h); }   // 沒變形就整塊畫，最快
+  else { let y = y0; for (; y + 6 <= Z.hip; y += 6) strip(y, y + 6); strip(y, Z.hip); for (y = Z.hip; y < 1400; y += 6) strip(y, Math.min(y + 6, 1400)); strip(1400, BD.h); }
   }
-  ctx.drawImage(headC, hx, hy, HC_W * k, HC_H * k);
+  if (part !== 'body') ctx.drawImage(headC, 0, 0, HC_W, uh, hx, hy, HC_W * k, uh * k);
   ctx.restore();
+}
+// 身體只在有變動時重畫一次，之後移動鏡頭只是貼圖；頭部直接貼，放大才清楚
+const FIG_M = 120, figC = mk(BD.w, BD.h + FIG_M);
+function drawCached(ctx, c) {
+  prepare(c);
+  const key = [c.gender, c.shoulder, c.weight, c.legs, c.height, c.skin, c.top, c.bottom, c.hair, c.hairColor].join('|');
+  if (cache.fig !== key) {
+    const x = figC.getContext('2d');
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, figC.width, figC.height);
+    x.setTransform(1, 0, 0, 1, 0, FIG_M); drawFigure(x, c, 'body'); cache.fig = key;
+  }
+  ctx.drawImage(figC, 0, -FIG_M);
+  drawFigure(ctx, c, 'head');
 }
 // 鏡頭：把身體座標裡的一塊區域放進畫布
 const CAM = {full: [150, 70, 930, 1900], head: [AN.cx - 205, AN.top - 70, AN.cx + 205, AN.chin + 95]};
 function camFor(view, c) {
   const r = CAM[view].slice();
-  if (view === 'head') { const hK = 1 + sl(c.height, .05), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
+  if (view === 'head') { const hK = hKof(c), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
     const f = y => Z.ground + (y - lift - Z.ground) * hK; r[1] = f(r[1]); r[3] = f(r[3]); }
   return r;
 }
 function paint(canvas, c, rect, bg) {
   const dpr = Math.min(2, window.devicePixelRatio || 1), w = canvas.clientWidth, h = canvas.clientHeight;
   if (!w || !h) return null;
-  if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
   const ctx = canvas.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
   const s = Math.min(canvas.width / (rect[2] - rect[0]), canvas.height / (rect[3] - rect[1]));
   const tx = (canvas.width - (rect[2] - rect[0]) * s) / 2 - rect[0] * s, ty = (canvas.height - (rect[3] - rect[1]) * s) / 2 - rect[1] * s;
   ctx.setTransform(s, 0, 0, s, tx, ty); ctx.imageSmoothingQuality = 'high';
-  drawFigure(ctx, c);
+  drawCached(ctx, c);
   return {ctx, s, tx, ty};
 }
 
 /* ================= 介面 ================= */
 const $ = id => document.getElementById(id);
-let tab = 'face', view = 'head', camNow = null, camAnim = 0, undoStack = [];
+let tab = 'gender', view = 'full', camNow = null, camAnim = 0, undoStack = [];
 function go(id) { const sh = document.getElementById('pairSheet'); if (sh) sh.classList.remove('on'); document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
 function redraw() {
-  prepare(ch);
   const target = camFor(view, ch);
   if (!camNow) camNow = target;
   cancelAnimationFrame(camAnim);
@@ -706,7 +764,8 @@ function swatches(key, list, toCss) {
 }
 function renderPanel() {
   const p = $('panel'); let h = '';
-  if (tab === 'face') h = optGrid('face', o => 'face_' + o.id + '_base');
+  if (tab === 'gender') h = '<div class="note">性別只改變身形，不影響看相結果。男生身形目前是用程式調出來的佔位版。</div><div class="grid" style="grid-template-columns:repeat(2,1fr)">' + GENDERS.map((g, i) => '<button class="opt' + (ch.gender === i ? ' on' : '') + '" data-k="gender" data-i="' + i + '"><span style="font-size:17px">' + g + '</span></button>').join('') + '</div>';
+  else if (tab === 'face') h = optGrid('face', o => 'face_' + o.id + '_base');
   else if (tab === 'chin') h = optGrid('chin', o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_' + PARTS.face.options[ch.face].id + '_' + o.id);
   else if (['brows', 'eyes', 'nose', 'mouth', 'ears'].includes(tab)) h = optGrid(tab, o => tab + '_' + o.id);
   else if (tab === 'moles') h = '<div class="note">最多選 3 顆，再點一次可以拿掉。</div><div class="grid">' + MOLES.map(m => '<button class="opt' + (ch.moles.includes(m.id) ? ' on' : '') + '" data-mole="' + m.id + '"><span>' + m.name + '</span></button>').join('') + '</div>';
@@ -725,7 +784,7 @@ function randomChar() {
   for (const k in PARTS) c[k] = r(PARTS[k].options.length);
   const pool = MOLES.map(m => m.id).sort(() => Math.random() - .5); c.moles = pool.slice(0, r(3));
   for (const s of SLIDERS) c[s.id] = 20 + r(13) * 5;
-  c.skin = r(SKINS.length); c.hair = r(HAIRS.length); c.hairColor = r(HAIR_COLORS.length); c.top = r(TOPS.length); c.bottom = r(BOTTOMS.length);
+  c.gender = r(2); c.skin = r(SKINS.length); c.hair = r(HAIRS.length); c.hairColor = r(HAIR_COLORS.length); c.top = r(TOPS.length); c.bottom = r(BOTTOMS.length);
   return c;
 }
 
@@ -733,7 +792,7 @@ function randomChar() {
 let watchTimer = 0, lastResult = null;
 function startReading() {
   go('watch'); snd.init(); prepare(ch);
-  const cv = $('watchView'), k = AN.k, legLift = (Z.ground - Z.hip) * sl(ch.legs, .06), hK = 1 + sl(ch.height, .05);
+  const cv = $('watchView'), k = AN.k, legLift = (Z.ground - Z.hip) * sl(ch.legs, .06), hK = hKof(ch);
   const toBody = (hx, hy) => [AN.cx + (hx - HD.cx) * k, AN.top + (hy - HD.top) * k];
   const fix = p => [AN.cx + (p[0] - AN.cx) * hK, Z.ground + (p[1] - legLift - Z.ground) * hK];
   const pts = [toBody(HD.cx, 190), toBody(HD.cx, 520), toBody(HD.cx, chinYOf(ch) - 30), [300, 1100 + legLift]].map(fix);
@@ -844,11 +903,20 @@ $('panel').addEventListener('click', e => {
     const id = b.dataset.mole;
     if (!ch.moles.includes(id) && ch.moles.length >= 3) return;
     change(() => { ch.moles = ch.moles.includes(id) ? ch.moles.filter(m => m !== id) : ch.moles.concat(id); });
-  } else if (b.dataset.k) change(() => { ch[b.dataset.k] = +b.dataset.i; });
-  const st = $('panel').scrollTop; renderPanel(); $('panel').scrollTop = st;
+    b.classList.toggle('on', ch.moles.includes(id));
+  } else if (b.dataset.k) {
+    change(() => { ch[b.dataset.k] = +b.dataset.i; });
+    $('panel').querySelectorAll('[data-k="' + b.dataset.k + '"]').forEach(x => x.classList.toggle('on', x === b));
+  }
 });
-$('panel').addEventListener('input', e => { const s = e.target.dataset.s; if (!s) return; if (!e.target._h) { undoStack.push(JSON.stringify(ch)); e.target._h = 1; } ch[s] = +e.target.value; snd.tick(); persist(); redraw(); });
-$('panel').addEventListener('change', e => { if (e.target.dataset.s) e.target._h = 0; });
+let slideRaf = 0;
+$('panel').addEventListener('input', e => {
+  const s = e.target.dataset.s; if (!s) return;
+  if (!e.target._h) { undoStack.push(JSON.stringify(ch)); e.target._h = 1; }
+  ch[s] = +e.target.value; snd.tick();
+  if (!slideRaf) slideRaf = requestAnimationFrame(() => { slideRaf = 0; redraw(); });
+});
+$('panel').addEventListener('change', e => { if (e.target.dataset.s) { e.target._h = 0; persist(); } });
 $('zoomBtn').onclick = () => { view = view === 'head' ? 'full' : 'head'; redraw(); };
 $('randBtn').onclick = () => { change(() => { ch = randomChar(); }); renderPanel(); };
 $('undoBtn').onclick = () => { if (!undoStack.length) return; ch = JSON.parse(undoStack.pop()); persist(); snd.tick(); renderPanel(); redraw(); };
@@ -935,7 +1003,7 @@ const PAIR_TEXT = {
 /* ---------- 角色編碼（放進網址） ---------- */
 const ENC_VER = 1;
 const ENC_PARTS = ['face', 'chin', 'brows', 'eyes', 'nose', 'mouth', 'ears', 'shoulder', 'hand', 'stance'];
-const ENC_TAIL = [['skin', SKINS.length], ['hair', HAIRS.length], ['hairColor', HAIR_COLORS.length], ['top', TOPS.length], ['bottom', BOTTOMS.length]];
+const ENC_TAIL = [['skin', SKINS.length], ['hair', HAIRS.length], ['hairColor', HAIR_COLORS.length], ['top', TOPS.length], ['bottom', BOTTOMS.length], ['gender', 2]];
 function encodeChar(c) {
   const b = [ENC_VER];
   ENC_PARTS.forEach(k => b.push(c[k]));
@@ -1023,7 +1091,7 @@ function sizeCanvas(cv) {
   return cv.getContext('2d');
 }
 function headPt(c, px, py) {
-  const k = AN.k, hK = 1 + sl(c.height, .05), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
+  const k = AN.k, hK = hKof(c), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
   const bx = AN.cx + (px - HD.cx) * k, by = AN.top + (py - HD.top) * k;
   return [AN.cx + (bx - AN.cx) * hK, Z.ground + (by - lift - Z.ground) * hK, k * hK];
 }
@@ -1210,12 +1278,18 @@ function renderDex() {
       h += '<div class="dexitem' + (ok ? '' : ' lock') + '"><b>' + (ok ? x.name : '？？？') + '</b><small>' + (ok ? x.text : '提示：' + x.hint) + '</small></div>'; }
     h += '</div>';
     h = '<div class="note">已收集 ' + n + ' / ' + (24 + HIDDEN.length) + '</div>' + h;
-  } else h = '<div class="note" style="text-align:center;margin-top:40px">相士攤位開放之後，上門的客人會收在這裡。</div>';
+  } else {
+    const b = store.booth || {guests: [], days: 0, served: 0, coins: 0};
+    h = '<div class="note">開攤 ' + (b.days || 0) + ' 天，看過 ' + (b.served || 0) + ' 位客人，存了 ' + (b.coins || 0) + ' 枚銅板。特別的客人 ' + b.guests.length + ' / ' + GUESTS.length + '</div><div class="dexgrid" style="grid-template-columns:1fr">' +
+      GUESTS.map(g => { const ok = b.guests.includes(g.id);
+        return '<div class="dexitem' + (ok ? '' : ' lock') + '" style="text-align:left;padding:10px 12px"><b>' + (ok ? g.prop + ' ' + g.name : '？？？') + '</b><small>' + (ok ? g.dex : '攤位到「' + BOOTH_LEVELS[g.lvl].name + '」之後會上門') + '</small></div>'; }).join('') + '</div>';
+  }
   $('dexBody').innerHTML = h;
   $('dexTabs').innerHTML = [['parts', '部位'], ['titles', '稱號'], ['guests', '客人']].map(t => '<button class="' + (t[0] === dexTab ? 'on' : '') + '" data-d="' + t[0] + '">' + t[1] + '</button>').join('');
 }
 function refreshHome() {
   const has = (store.readings || 0) > 0;
+  $('boothBtn').disabled = !has; $('boothBtn').textContent = has ? '相士攤位' : '🔒 相士攤位（看相一次後開放）';
   $('dexBtn').disabled = !has; $('dexBtn').textContent = has ? '圖鑑' : '🔒 圖鑑（看相一次後開放）';
 }
 
@@ -1249,6 +1323,195 @@ $('dexBtn').onclick = () => { go('dex'); dexTab = 'parts'; renderDex(); $('dex')
 $('dexTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; dexTab = b.dataset.d; snd.tick(); renderDex(); $('dex').scrollTop = 0; });
 $('dexBack').onclick = () => go('home');
 $('homeLink').onclick = () => { cancelAnimationFrame(watchTimer); cancelAnimationFrame(pairAnim); snd.tick(); go('home'); refreshHome(); };
+
+/* ================= 第 3 階段：相士攤位 ================= */
+const BOOTH_LEVELS = [
+  {name: '路邊小桌', need: 0,   bg: 'linear-gradient(#cfe8f5,#f3ead9)', deco: '🌳'},
+  {name: '廟口攤位', need: 20,  bg: 'linear-gradient(#f9d9c2,#f6e7c8)', deco: '🏮'},
+  {name: '小工作室', need: 50,  bg: 'linear-gradient(#e2ecd9,#f4efe2)', deco: '🪴'},
+  {name: '命理館',   need: 90,  bg: 'linear-gradient(#e6dcf2,#f3e9ee)', deco: '📜'},
+  {name: '名人御用', need: 150, bg: 'linear-gradient(#f6e3b0,#fbf1dc)', deco: '👑'},
+];
+const BOOTH_Q = [
+  ['我想把存款拿去投資，現在可以嗎？', '朋友找我合夥開店，要不要跟？', '我想辭職去創業，錢的方面撐得住嗎？'],
+  ['我想跟喜歡的人告白，現在說好嗎？', '交往三年了，我想求婚，時機對嗎？', '我想主動約曖昧對象出去，可以嗎？'],
+  ['我想換工作，現在該不該辭？', '主管要我接一個大專案，接不接？', '我想轉換跑道去考研究所，行嗎？'],
+  ['我想自己辦一場活動，會有人來嗎？', '我剛搬到新城市，想主動認識新朋友，順利嗎？', '我想出來選社團幹部，有機會嗎？'],
+];
+const BOOTH_Q2 = {
+  '0-1': '我想跟另一半一起買房，錢和感情都顧得到嗎？', '0-2': '我想離職創業，事業和收入能兼顧嗎？',
+  '0-3': '我想找朋友一起做生意，交情和荷包都顧得住嗎？', '1-2': '對象在外地，我想為了他換工作搬過去，好嗎？',
+  '1-3': '我喜歡上朋友圈裡的人，說出口以後大家還能自在相處嗎？', '2-3': '我想跳出來帶團隊，同事會挺我嗎？',
+};
+const ADVICE = ['放手去做', '換個方式', '再等等'];
+const ADV_WHY = ['底氣夠，可以放手去做。', '不上不下，換個方式比較穩。', '還在累積，先等等再說。'];
+const BOOTH_GOOD = ['師傅真準！我回去就照辦。', '難怪大家都說這攤準，謝謝師傅！', '聽你這樣說我就放心了。'];
+const SPOT_KEYS = ['face', 'chin', 'brows', 'eyes', 'nose', 'mouth', 'ears', 'shoulder', 'hand'];
+const SPOT_LABEL = {face: '臉型', chin: '下巴', brows: '眉', eyes: '眼', nose: '鼻', mouth: '嘴', ears: '耳', shoulder: '肩', hand: '手'};
+const GUESTS = [
+  {id: 'ex', lvl: 0, name: '帶著前任照片的人', prop: '🖼️', look: {eyes: 5, mouth: 1, hair: 3},
+   line: '師傅，你幫我看看這張照片，他還會回來嗎？',
+   opts: ['看相要看本人，照片不準。先看看你自己吧', '會，他下個月就回來', '不會，你把照片收起來'], ans: 0,
+   good: '……也是，我好像一直在看他，都沒看過自己。', bad: '嗯？只憑一張照片，師傅你也太有把握了吧。',
+   dex: '拿著照片來問前任。相師傅說，相要看本人，先把自己看清楚。'},
+  {id: 'boss', lvl: 1, name: '要選老闆的上班族', prop: '💼', look: {gender: 1, hair: 1, brows: 0, top: 5, bottom: 1},
+   line: '我有兩個工作機會。聽說鼻子看財，那我是不是該跟鼻子大的老闆？',
+   opts: ['對，鼻子越大薪水越高', '鼻子看的是他自己的財庫，不是他給你的薪水', '要挑耳朵大的才對'], ans: 1,
+   good: '原來如此，那我還是回去比合約好了。', bad: '嗯？可是他的鼻子大，跟我的薪水有關係嗎……',
+   dex: '想用老闆的鼻子挑工作。鼻子看的是本人的財庫，別人的鼻子幫不了你。'},
+  {id: 'granny', lvl: 2, name: '帶著狗的阿嬤', prop: '🐶', look: {gender: 0, hair: 5, hairColor: 7, eyes: 5, mouth: 0, ears: 1},
+   line: '師傅啊，幫我家小白看一下，牠最近都不吃飯。',
+   opts: ['牠鼻頭濕潤，財運很好', '牠耳朵下垂，是有晚福的相', '狗的相我不會看，帶牠去看獸醫比較快'], ans: 2,
+   good: '哎唷，師傅你老實，我喜歡。我這就帶牠去。', bad: '嗯？小白是不吃飯，不是要問財運啦。',
+   dex: '帶小白來看相。相師傅只看人，狗狗不吃飯要找獸醫。'},
+  {id: 'rival', lvl: 3, name: '來踢館的同行', prop: '📖', look: {gender: 1, hair: 0, brows: 1, eyes: 3, nose: 2, mouth: 2},
+   line: '同行來請教一題：相書說的「三停」，是哪三停？',
+   opts: ['眉、眼、嘴', '額頭、鼻子、下巴', '頭、身、腳'], ans: 1,
+   good: '基本功紮實。失敬，改天換我請你喝茶。', bad: '嗯？連三停都說不清楚，這攤位我看是……算了，回去翻翻書吧。',
+   dex: '來考基本功的同行。三停是額頭、鼻子、下巴，分別看少年、中年、晚年。'},
+  {id: 'lady', lvl: 4, name: '戴墨鏡的神秘貴婦', prop: '💎', glasses: true, look: {gender: 0, hair: 3, hairColor: 0, mouth: 2, ears: 1, top: 5, bottom: 1},
+   line: '我不方便拿下墨鏡。這樣你還看得出什麼嗎？',
+   opts: ['不拿下來我沒辦法看', '那我用猜的', '眼睛看不到，就看耳朵和下巴，一樣能看'], ans: 2,
+   good: '呵，有意思。我會跟朋友們提起你這一攤。', bad: '嗯？聽說你是這一帶最會看的，看來是我聽錯了。',
+   dex: '全程不拿下墨鏡。從頭相到腳，遮住一個地方，還有很多地方可以看。'},
+];
+let bs = null;
+function boothStore() { return store.booth || (store.booth = {coins: 0, rep: 0, days: 0, served: 0, guests: []}); }
+function boothLevel(rep) { let l = 0; BOOTH_LEVELS.forEach((x, i) => { if (rep >= x.need) l = i; }); return l; }
+function bestParts(c, fs) {
+  const val = k => fs.reduce((a, f) => a + PARTS[k].options[c[k]].s[f], 0), m = Math.max(...SPOT_KEYS.map(val));
+  return SPOT_KEYS.filter(k => val(k) === m);
+}
+function bodyPt(c, bx, by) {
+  const hK = hKof(c), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
+  return [AN.cx + (bx - AN.cx) * hK, Z.ground + (by - lift - Z.ground) * hK];
+}
+function startDay() {
+  const b = boothStore(), lvl = boothLevel(b.rep), list = [], pools = BOOTH_Q.map(q => q.slice().sort(() => Math.random() - .5));
+  for (let i = 0; i < 5; i++) {
+    const f = Math.floor(Math.random() * 4);
+    if (lvl >= 2 && Math.random() < .4) { const g = (f + 1 + Math.floor(Math.random() * 3)) % 4, fs = [f, g].sort(); list.push({c: randomChar(), fs, q: BOOTH_Q2[fs.join('-')]}); }
+    else list.push({c: randomChar(), fs: [f], q: pools[f][i % 3]});
+  }
+  const g = GUESTS.find(x => lvl >= x.lvl && !b.guests.includes(x.id));
+  if (g) list[2] = {guest: g, c: Object.assign(randomChar(), {shoulder: 0, weight: 50, height: 50, legs: 50}, g.look)};
+  bs = {list, i: 0, right: 0, coins: 0, rep: 0, phase: '', sel: null, lvl};
+  go('booth'); showCustomer();
+}
+function boothHud() {
+  const b = boothStore(), lvl = boothLevel(b.rep), next = BOOTH_LEVELS[lvl + 1];
+  $('bName').textContent = 'Lv.' + (lvl + 1) + ' ' + BOOTH_LEVELS[lvl].name;
+  $('bRep').textContent = '口碑 ' + b.rep + (next ? ' / ' + next.need : '');
+  $('bCoin').textContent = '🪙 ' + b.coins;
+  $('bNo').textContent = bs && bs.i < 5 ? '第 ' + (bs.i + 1) + ' / 5 位' : '';
+  $('bStage').style.background = BOOTH_LEVELS[bs ? bs.lvl : lvl].bg;
+  $('bSign').textContent = BOOTH_LEVELS[bs ? bs.lvl : lvl].deco + ' ' + BOOTH_LEVELS[bs ? bs.lvl : lvl].name;
+}
+function paintBooth() {
+  const cv = $('bView'), cur = bs && bs.list[bs.i]; if (!cur) return;
+  const c = cur.c, p0 = bodyPt(c, AN.cx - 215, AN.top - 50), p1 = bodyPt(c, AN.cx + 215, AN.chin + 120);
+  const r = paint(cv, c, [p0[0], p0[1], p1[0], p1[1]]); if (!r) return;
+  if (cur.guest && cur.guest.glasses) {
+    const x = r.ctx; x.fillStyle = '#2a2026'; x.strokeStyle = '#2a2026'; x.lineWidth = 7 * AN.k;
+    for (const s of [-1, 1]) { const [px, py, k] = headPt(c, HD.cx + s * 152, 412); rr(x, px - 68 * k, py - 40 * k, 136 * k, 80 * k, 26 * k); x.fill(); }
+    const [ax, ay] = headPt(c, HD.cx - 84, 404), [bx] = headPt(c, HD.cx + 84, 404); x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, ay); x.stroke();
+  }
+  r.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  r.ctx.fillStyle = '#b98a5e'; r.ctx.fillRect(0, cv.height * .93, cv.width, cv.height * .07);
+  r.ctx.fillStyle = '#8f6844'; r.ctx.fillRect(0, cv.height * .93, cv.width, cv.height * .012);
+  // 部位標籤
+  const d = cv.width / cv.clientWidth, css = (bx, by) => [(bx * r.s + r.tx) / d, (by * r.s + r.ty) / d];
+  const hp = (x, y) => { const q = headPt(c, x, y); return css(q[0], q[1]); };
+  const hw = (META.faces[faceId(c)] || {}).hwEar || HD.hwEar, sp = bodyPt(c, AN.cx + 150, Z.shoulder + 30);
+  const pos = {brows: hp(HD.cx - 140, 346), eyes: hp(HD.cx + 152, 412), nose: hp(HD.cx, 522), mouth: hp(HD.cx, 628),
+    chin: hp(HD.cx, chinYOf(c) - 16), face: hp(HD.cx + hw - 60, 560), ears: hp(HD.cx - hw - 20, 470), shoulder: css(sp[0], sp[1])};
+  let h = '';
+  if (!cur.guest) {
+    for (const k in pos) h += '<button class="spot" data-p="' + k + '" style="left:' + pos[k][0].toFixed(0) + 'px;top:' + pos[k][1].toFixed(0) + 'px">' + SPOT_LABEL[k] + '</button>';
+    h += '<button class="spot hand" data-p="hand"><img src="' + IT['hand_' + PARTS.hand.options[c.hand].id].src + '" alt="">手</button>';
+  }
+  $('bSpots').innerHTML = h; markSpots(bs.best);
+}
+function markSpots(best) {
+  document.querySelectorAll('#bSpots .spot').forEach(b => {
+    b.classList.toggle('sel', bs.sel === b.dataset.p);
+    b.classList.toggle('best', !!best && best.includes(b.dataset.p));
+    b.disabled = bs.phase !== 'part';
+  });
+}
+function showCustomer() {
+  const cur = bs.list[bs.i]; bs.sel = null; bs.best = null; bs.phase = cur.guest ? 'guest' : 'part';
+  boothHud(); $('bProp').textContent = cur.guest ? cur.guest.prop : '';
+  $('bLine').textContent = '「' + (cur.guest ? cur.guest.line : cur.q) + '」';
+  $('bFeed').innerHTML = ''; $('bNext').style.display = 'none';
+  if (cur.guest) {
+    $('bStep').textContent = '特別的客人上門了。你怎麼回答？';
+    $('bOpts').innerHTML = cur.guest.opts.map((t, i) => '<button class="btn" data-g="' + i + '">' + t + '</button>').join('');
+  } else {
+    $('bStep').textContent = '第一步：這個問題要看哪裡？點客人身上的部位。';
+    $('bOpts').innerHTML = '';
+  }
+  requestAnimationFrame(paintBooth); snd.pop();
+}
+function boothReward(coin, rep, perfect) {
+  const b = boothStore(), before = boothLevel(b.rep);
+  b.coins += coin; b.rep += rep; b.served++; bs.coins += coin; bs.rep += rep; if (perfect) bs.right++;
+  const after = boothLevel(b.rep); persist();
+  let msg = '<div class="gain">🪙 +' + coin + '　口碑 +' + rep + '</div>';
+  if (after > before) { msg += '<div class="lvup">口碑傳開了！攤位升級成「' + BOOTH_LEVELS[after].name + '」，明天換新地方。</div>'; track('booth_level', after + 1); setTimeout(() => snd.chime(), 400); }
+  return msg;
+}
+function finishNormal(a) {
+  const cur = bs.list[bs.i], c = cur.c, fs = cur.fs, best = bestParts(c, fs), j = judge(c);
+  const st = fs.length === 1 ? j.stars[fs[0]] : Math.floor((j.stars[fs[0]] + j.stars[fs[1]]) / 2);
+  const want = st >= 4 ? 0 : st === 3 ? 1 : 2, okP = best.includes(bs.sel), okA = a === want, n = okP + okA;
+  const fname = fs.map(f => FORT_NAME[f]).join('和'), bp = okP ? bs.sel : best[0], o = PARTS[bp].options[c[bp]];
+  bs.phase = 'done'; bs.best = best; requestAnimationFrame(paintBooth);
+  $('bLine').textContent = '「' + (n === 2 ? BOOTH_GOOD[bs.i % 3] : okP ? '嗯？部位你看對了，可是這個建議我有點猶豫……' : '嗯？可是我聽說看' + fname + '要先看' + SPOT_LABEL[best[0]] + '……') + '」';
+  $('bStep').textContent = ''; $('bOpts').innerHTML = '';
+  $('bFeed').innerHTML = '<div class="fb ' + (okP ? 'ok' : 'ng') + '">' + (okP ? '✓' : '✗') + ' 看' + fname + '，這位客人最該看' + SPOT_LABEL[bp] + '：' + o.name + '，' + o.text + '。</div>' +
+    '<div class="fb ' + (okA ? 'ok' : 'ng') + '">' + (okA ? '✓' : '✗') + ' ' + fname + (fs.length > 1 ? '平均 ' : ' ') + starStr(st) + '，' + ADV_WHY[want] + '</div>' +
+    boothReward([5, 15, 30][n], [0, 1, 3][n], n === 2);
+  n === 2 ? snd.coin() : snd.hmm(); boothNextBtn();
+}
+function finishGuest(i) {
+  const g = bs.list[bs.i].guest, ok = i === g.ans, b = boothStore();
+  bs.phase = 'done';
+  $('bLine').textContent = '「' + (ok ? g.good : g.bad) + '」'; $('bStep').textContent = ''; $('bOpts').innerHTML = '';
+  if (ok && !b.guests.includes(g.id)) b.guests.push(g.id);
+  $('bFeed').innerHTML = '<div class="fb ' + (ok ? 'ok' : 'ng') + '">' + (ok ? '✓ 「' + g.name + '」收進圖鑑了。' : '✗ 這位客人改天還會再來。') + '</div>' + boothReward(ok ? 50 : 10, ok ? 5 : 1, ok);
+  ok ? snd.coin() : snd.hmm(); boothNextBtn(); requestAnimationFrame(paintBooth);
+}
+function boothNextBtn() { boothHud(); $('bNext').textContent = bs.i < 4 ? '下一位' : '收攤'; $('bNext').style.display = 'block'; }
+function endDay() {
+  const b = boothStore(); b.days++; persist(); track('booth_day_end', bs.right);
+  const lvl = boothLevel(b.rep), next = BOOTH_LEVELS[lvl + 1];
+  bs.i = 5; bs.phase = 'end'; bs.lvl = lvl; boothHud();
+  const cv = $('bView'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
+  $('bSpots').innerHTML = ''; $('bProp').textContent = '🌙';
+  $('bLine').innerHTML = '今天收攤了。看了 5 位客人，完全看準 ' + bs.right + ' 位。<br>賺到 ' + bs.coins + ' 枚銅板，口碑 +' + bs.rep + '。'; $('bStep').textContent = '';
+  $('bFeed').innerHTML = '<div class="note">' + (next ? '口碑再 ' + (next.need - b.rep) + ' 點，就能升級成「' + next.name + '」。' : '你已經是名人御用的相師傅了。') + '看不準的時候，去圖鑑翻翻各部位的解讀。</div>';
+  $('bOpts').innerHTML = '<button class="btn main" data-day="1">再開一天</button><button class="btn" data-home="1">回首頁</button>';
+  $('bNext').style.display = 'none';
+}
+$('bSpots').addEventListener('click', e => {
+  const b = e.target.closest('.spot'); if (!b || bs.phase !== 'part') return;
+  bs.sel = b.dataset.p; bs.phase = 'advice'; snd.wood(); markSpots();
+  const c = bs.list[bs.i].c;
+  $('bStep').textContent = '你看的是' + SPOT_LABEL[bs.sel] + '（' + PARTS[bs.sel].options[c[bs.sel]].name + '）。第二步：給他什麼建議？';
+  $('bOpts').innerHTML = '<div class="adv">' + ADVICE.map((t, i) => '<button class="btn" data-a="' + i + '">' + t + '</button>').join('') + '</div>';
+  requestAnimationFrame(paintBooth);
+});
+$('bOpts').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.a !== undefined && bs.phase === 'advice') finishNormal(+b.dataset.a);
+  else if (b.dataset.g !== undefined && bs.phase === 'guest') finishGuest(+b.dataset.g);
+  else if (b.dataset.day) startDay();
+  else if (b.dataset.home) { go('home'); refreshHome(); }
+});
+$('bNext').onclick = () => { if (bs.i < 4) { bs.i++; showCustomer(); } else endDay(); };
+$('boothBtn').onclick = () => { snd.init(); snd.bgm(true); startDay(); };
+addEventListener('resize', () => { if ($('booth').classList.contains('active') && bs && bs.i < 5) paintBooth(); });
 
 checkCopy();
 loadImages().then(() => {
