@@ -14,14 +14,22 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Noto S
 body{display:flex;flex-direction:column;min-height:100dvh;height:100dvh;overflow:hidden}
 button{font:inherit;color:inherit;cursor:pointer;border:none;background:none}
 header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;flex:none}
-header h1{font-size:18px;letter-spacing:2px}
+header h1{font-size:18px;letter-spacing:2px;cursor:pointer;padding:8px 6px 8px 0}
 #mute{width:40px;height:40px;border-radius:50%;background:var(--card);font-size:18px}
 main{flex:1;position:relative;min-height:0}
 .screen{display:none;position:absolute;inset:0}
 .screen.active{display:flex;flex-direction:column}
 footer{text-align:center;font-size:12px;opacity:.7;padding:6px;flex:none}
 .btn{display:block;width:100%;padding:14px;border:2px solid var(--gold);background:#fff;border-radius:14px;font-size:17px;font-weight:600}
-.btn.main{background:var(--pink);border-color:var(--pink);color:#fff}
+.btn{box-shadow:0 4px 0 #b08d3e;transition:transform .06s,box-shadow .06s;position:relative}
+.btn.main{background:var(--pink);border-color:var(--pink);color:#fff;box-shadow:0 4px 0 #c56a88}
+.btn:active:not(:disabled){transform:translateY(4px);box-shadow:0 0 0 transparent}
+.btn:disabled{box-shadow:0 4px 0 #d9cbb0}
+.tabs button,.opt,.seg button,#mute,.zoom{box-shadow:0 3px 0 #e2ccd6;transition:transform .06s,box-shadow .06s}
+.tabs button.on{box-shadow:0 3px 0 #2c222a}
+.opt.on,.seg button.on{box-shadow:0 3px 0 #e3a3b8}
+.tabs button:active,.opt:active,.seg button:active,#mute:active,.zoom:active{transform:translateY(3px);box-shadow:0 0 0 transparent}
+.tabs{padding-bottom:11px}.bar{padding-bottom:12px}
 .btn:disabled{opacity:.5}
 
 /* 首頁 */
@@ -29,7 +37,7 @@ footer{text-align:center;font-size:12px;opacity:.7;padding:6px;flex:none}
 #home .logo{font-size:44px;font-weight:800;letter-spacing:6px;line-height:1.25}
 #home .logo span{color:var(--pink)}
 #home p{line-height:1.7;max-width:320px}
-#home .menu{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;margin-top:10px}
+#home .menu{width:100%;max-width:320px;display:flex;flex-direction:column;gap:12px;margin-top:10px}
 #loading{font-size:14px;opacity:.7}
 
 /* 捏人 */
@@ -79,11 +87,15 @@ footer{text-align:center;font-size:12px;opacity:.7;padding:6px;flex:none}
 .luck{display:grid;grid-template-columns:3em 6em 1fr;gap:2px 6px;align-items:baseline}
 .luck .st{color:var(--gold);letter-spacing:1px;white-space:nowrap}
 .luck .tx{font-size:13.5px}
-details summary{font-size:15px;font-weight:600;min-height:32px;display:flex;align-items:center}
+details summary{font-size:15px;font-weight:600;min-height:36px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:'點開看 ▾';font-size:13px;font-weight:400;color:var(--gold);background:#fff;border:1.5px solid var(--gold);border-radius:999px;padding:3px 10px}
+details[open] summary::after{content:'收起 ▴'}
 .read{display:grid;grid-template-columns:5.2em 1fr;gap:4px 8px;font-size:14px;margin-top:6px}
 .read b{font-weight:600}
 .read img{width:64px;height:64px;grid-column:1/3}
-#result .acts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.acts{display:flex;flex-direction:column;gap:12px;margin-top:12px;padding-bottom:6px}
+.acts .note{margin:0}.note:empty{display:none}
 
 .sheet{position:fixed;inset:0;background:rgba(74,59,71,.5);display:none;align-items:flex-end;justify-content:center;z-index:20}
 .sheet.on{display:flex}
@@ -117,7 +129,7 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
 </style>
 </head>
 <body>
-<header><h1>從頭相到腳</h1><button id="mute" aria-label="聲音開關">🔔</button></header>
+<header><h1 id="homeLink" role="button" tabindex="0">從頭相到腳</h1><button id="mute" aria-label="聲音開關">🔔</button></header>
 <main>
   <section class="screen active" id="home">
     <div class="logo">從頭<span>相</span>到腳</div>
@@ -1236,6 +1248,7 @@ $('pHome').onclick = () => { go('home'); refreshHome(); };
 $('dexBtn').onclick = () => { go('dex'); dexTab = 'parts'; renderDex(); $('dex').scrollTop = 0; };
 $('dexTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; dexTab = b.dataset.d; snd.tick(); renderDex(); $('dex').scrollTop = 0; });
 $('dexBack').onclick = () => go('home');
+$('homeLink').onclick = () => { cancelAnimationFrame(watchTimer); cancelAnimationFrame(pairAnim); snd.tick(); go('home'); refreshHome(); };
 
 checkCopy();
 loadImages().then(() => {
