@@ -424,9 +424,16 @@ const BANNED = ['剋', '短命', '夭', '破財', '凶', '孤', '刑', '敗', '�
 const STAR_STEPS = [0.12, 0.22, 0.32, 0.44];
 
 const SKINS = [[247,205,181], [255,226,208], [236,188,150], [214,160,120], [176,120,84], [128,84,58]];
+// 後髮（存檔欄位沿用 hair，舊連結才打得開；新的只能加在後面）
 const HAIRS = [
   {id: 'none', name: '光頭'}, {id: 'short', name: '短髮'}, {id: 'bob', name: '鮑伯頭'},
-  {id: 'long', name: '長直髮'}, {id: 'ponytail', name: '馬尾'}, {id: 'bun', name: '丸子頭'},
+  {id: 'long', name: '長直髮', tall: 1}, {id: 'ponytail', name: '馬尾'}, {id: 'bun', name: '丸子頭'},
+  {id: 'buzz', name: '平頭'}, {id: 'medium', name: '中長髮'}, {id: 'wavy', name: '長捲髮', tall: 1}, {id: 'twintail', name: '雙馬尾'},
+];
+// 前髮
+const BANGS = [
+  {id: 'none', name: '露額頭'}, {id: 'straight', name: '齊瀏海'}, {id: 'airy', name: '空氣瀏海'},
+  {id: 'side', name: '旁分'}, {id: 'center', name: '中分'}, {id: 'curtain', name: '八字瀏海'},
 ];
 const HAIR_COLORS = ['#463a3c', '#6b4a3a', '#a06f4c', '#e6c682', '#b5523f', '#f2a7b8', '#8fb2e0', '#f4f4f6'];
 // 佔位衣服：直接把標準人的灰色打底衣染色。之後有正式圖就加 asset 欄位
@@ -451,7 +458,7 @@ const TABS = [
 
 /* ================= 判定（只讀上面的表，不含隨機） ================= */
 function defaultChar() {
-  const c = {gender: 0, moles: [], skin: 0, hair: 2, hairColor: 1, top: 0, bottom: 0};
+  const c = {gender: 0, moles: [], skin: 0, hair: 2, bang: 1, hairColor: 1, top: 0, bottom: 0};
   for (const k in PARTS) c[k] = 0;
   for (const s of SLIDERS) c[s.id] = 50;
   return c;
@@ -603,13 +610,22 @@ function tinted(id, color) {
   t.globalCompositeOperation = 'source-over';
   return tmpC;
 }
+const tintBodyCache = {};
+function tintedBody(id, color) {
+  const k = id + color; if (tintBodyCache[k]) return tintBodyCache[k];
+  const im = IMG[id], cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+  const t = cv.getContext('2d'); t.drawImage(im, 0, 0);
+  t.globalCompositeOperation = 'multiply'; t.fillStyle = color; t.fillRect(0, 0, cv.width, cv.height);
+  t.globalCompositeOperation = 'destination-in'; t.drawImage(im, 0, 0);
+  return tintBodyCache[k] = cv;
+}
 function chinYOf(c) {
   const fid = faceId(c), base = (IT[fid] && IT[fid].chinY) || (META.faces[fid] || {}).chinY || HD.chin;
   return STRETCH_Y + (base - STRETCH_Y) * (1 + sl(c.lower, .07));
 }
 const STRETCH_Y = 560;
 function renderHead(c) {
-  const headKey = [faceId(c), c.ears, c.skin, c.chin, c.brows, c.eyes, c.nose, c.mouth, c.moles.join('.'), c.upper, c.mid, c.lower, c.browDist, c.eyeSize, c.noseWidth, c.mouthSize, c.featY, c.hair, c.hairColor].join('|');
+  const headKey = [faceId(c), c.ears, c.skin, c.chin, c.brows, c.eyes, c.nose, c.mouth, c.moles.join('.'), c.upper, c.mid, c.lower, c.browDist, c.eyeSize, c.noseWidth, c.mouthSize, c.featY, c.hair, c.bang, c.hairColor].join('|');
   if (cache.head === headKey) return; cache.head = headKey;
   const fid = faceId(c), fm = META.faces[fid] || {hwEar: HD.hwEar};
   const earId = 'ears_' + PARTS.ears.options[c.ears].id, earDx = (fm.hwEar || HD.hwEar) - HD.hwEar;
@@ -653,17 +669,20 @@ function renderHead(c) {
   for (const id of c.moles) { const p = pos[id]; h.beginPath(); h.arc(p[0], p[1], 6, 0, 7); h.fill(); }
   h.restore();
   // 頭髮
-  const hid = HAIRS[c.hair].id, hairKey = hid + '|' + c.hairColor;
+  const hid = HAIRS[c.hair].id, bid = BANGS[c.bang || 0].id, hairKey = hid + '|' + bid + '|' + c.hairColor;
   if (cache.hair !== hairKey) {
     const b = backC.getContext('2d'), f = hairFC.getContext('2d'), col = HAIR_COLORS[c.hairColor];
     b.clearRect(0, 0, HC_W, HC_H); f.clearRect(0, 0, HC_W, HC_H);
+    const pick = (...ids) => ids.find(id => IMG[id] && !IT[id].ph) || ids.find(id => IMG[id]);
     if (hid !== 'none') {
-      if (IMG['hair_' + hid + '_back']) b.drawImage(tinted('hair_' + hid + '_back', col), 0, 0);
-      if (IMG['hair_' + hid + '_front']) f.drawImage(tinted('hair_' + hid + '_front', col), 0, 0);
+      const under = pick('hairback_' + hid + '_under', 'hair_' + hid + '_back'), over = pick('hairback_' + hid + '_over', 'hair_' + hid + '_front');
+      if (under) b.drawImage(tinted(under, col), 0, 0);
+      if (over) f.drawImage(tinted(over, col), 0, 0);
     }
+    if (bid !== 'none' && IMG['bangs_' + bid]) f.drawImage(tinted('bangs_' + bid, col), 0, 0);
     cache.hair = hairKey;
   }
-  if (hid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, usedH(c), 0, 0, HC_W, usedH(c));
+  if (hid !== 'none' || bid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, usedH(c), 0, 0, HC_W, usedH(c));
 }
 // 手的特寫跟著膚色換色，換過的存起來
 const handCache = {};
@@ -707,7 +726,7 @@ function prepare(c) { renderHead(c); renderBody(c); }
 // 把整個角色畫進 ctx（身體座標）。回傳頭部在身體座標裡的位置，給鏡頭用
 function hKof(c) { return 1 + sl(c.height, .05); }
 // 把整個角色畫進 ctx（身體座標）
-const usedH = c => HAIRS[c.hair].id === 'long' ? 1580 : 1300;
+const usedH = c => HAIRS[c.hair].tall ? 1580 : 1300;
 function drawFigure(ctx, c, part) {
   const male = c.gender === 1 && !IMG.body_base_m, shK = [0, .08, -.06][c.shoulder], wK = 1 + sl(c.weight, .06), legK = 1 + sl(c.legs, .06), hK = hKof(c);
   const lift = (Z.ground - Z.hip) * (legK - 1), k = AN.k;
@@ -715,7 +734,12 @@ function drawFigure(ctx, c, part) {
   ctx.translate(AN.cx, Z.ground); ctx.scale(hK, hK); ctx.translate(-AN.cx, -Z.ground - lift);
   const hx = AN.cx - HD.cx * k, hy = AN.top - (HD.top + OY) * k, uh = usedH(c);
   if (part !== 'head') {
-  if (HAIRS[c.hair].id !== 'none') ctx.drawImage(backC, 0, 0, HC_W, uh, hx, hy, HC_W * k, uh * k);
+  if (HAIRS[c.hair].id !== 'none') {
+    ctx.drawImage(backC, 0, 0, HC_W, uh, hx, hy, HC_W * k, uh * k);
+    const hb = 'hairbody_' + HAIRS[c.hair].id;   // 長髮超出頭部特寫的那段（全身圖切出來的）
+    if (IMG[hb]) { const it = IT[hb], cut = AN.top + (HD.size - HD.top - 40) * k;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, cut, BD.w, BD.h); ctx.clip(); ctx.drawImage(tintedBody(hb, HAIR_COLORS[c.hairColor]), it.x, it.y, it.w, it.h); ctx.restore(); }
+  }
   const xsAt = y => {
     const r = sm(Z.neck + 10, Z.shoulder + 30, y), rs = 1 - sm(620, 1000, y);
     let v = wK * (1 + shK * rs);
@@ -737,7 +761,7 @@ function drawFigure(ctx, c, part) {
 const FIG_M = 120, figC = mk(BD.w, BD.h + FIG_M);
 function drawCached(ctx, c) {
   prepare(c);
-  const key = [c.gender, c.shoulder, c.weight, c.legs, c.height, c.skin, c.top, c.bottom, c.hair, c.hairColor].join('|');
+  const key = [c.gender, c.shoulder, c.weight, c.legs, c.height, c.skin, c.top, c.bottom, c.hair, c.bang, c.hairColor].join('|');
   if (cache.fig !== key) {
     const x = figC.getContext('2d');
     x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, figC.width, figC.height);
@@ -819,7 +843,11 @@ function renderPanel() {
   else if (['brows', 'eyes', 'nose', 'mouth', 'ears'].includes(tab)) h = optGrid(tab, o => tab + '_' + o.id);
   else if (tab === 'moles') h = '<div class="note">最多選 3 顆，再點一次可以拿掉。</div><div class="grid">' + MOLES.map(m => '<button class="opt' + (ch.moles.includes(m.id) ? ' on' : '') + '" data-mole="' + m.id + '"><span>' + m.name + '</span></button>').join('') + '</div>';
   else if (tab === 'ratio') h = '<div class="note">額頭、鼻子、下巴三段叫「三停」，哪一段最長，就看哪個時期最旺。</div>' + sliderRows('ratio');
-  else if (tab === 'hair') h = '<div class="grid">' + HAIRS.map((o, i) => '<button class="opt' + (ch.hair === i ? ' on' : '') + '" data-k="hair" data-i="' + i + '">' + (o.id === 'none' ? '' : thumb('hair_' + o.id + '_front') + phTag('hair_' + o.id + '_front')) + '<span>' + o.name + '</span></button>').join('') + '</div><div class="group">髮色</div>' + swatches('hairColor', HAIR_COLORS, c => c);
+  else if (tab === 'hair') {
+    const hthumb = (ids) => { const id = ids.find(x => IT[x] && !IT[x].ph) || ids.find(x => IT[x]); return id ? thumb(id) + phTag(id) : ''; };
+    h = '<div class="group">前髮</div><div class="grid">' + BANGS.map((o, i) => '<button class="opt' + ((ch.bang || 0) === i ? ' on' : '') + '" data-k="bang" data-i="' + i + '">' + (o.id === 'none' ? '' : hthumb(['bangs_' + o.id])) + '<span>' + o.name + '</span></button>').join('') + '</div>' +
+      '<div class="group">後髮</div><div class="grid">' + HAIRS.map((o, i) => '<button class="opt' + (ch.hair === i ? ' on' : '') + '" data-k="hair" data-i="' + i + '">' + (o.id === 'none' ? '' : hthumb(['hairback_' + o.id + '_over', 'hair_' + o.id + '_front'])) + '<span>' + o.name + '</span></button>').join('') + '</div><div class="group">髮色</div>' + swatches('hairColor', HAIR_COLORS, c => c);
+  }
   else if (tab === 'hand') h = '<div class="note">手相看的是整隻手的形狀，選好會放大給你看。</div>' + optGrid('hand', o => 'hand_' + o.id);
   else if (tab === 'skin') h = '<div class="note">膚色不算在相裡，選你喜歡的。</div>' + swatches('skin', SKINS, c => 'rgb(' + c.join(',') + ')');
   else if (tab === 'body') h = '<div class="group">肩</div>' + optGrid('shoulder') + '<div class="group">身形</div>' + sliderRows('body');
@@ -839,7 +867,7 @@ function randomChar() {
   for (const k in PARTS) c[k] = r(PARTS[k].options.length);
   const pool = MOLES.map(m => m.id).sort(() => Math.random() - .5); c.moles = pool.slice(0, r(3));
   for (const s of SLIDERS) c[s.id] = 20 + r(13) * 5;
-  c.gender = r(2); c.skin = r(SKINS.length); c.hair = r(HAIRS.length); c.hairColor = r(HAIR_COLORS.length); c.top = r(TOPS.length); c.bottom = r(BOTTOMS.length);
+  c.gender = r(2); c.skin = r(SKINS.length); c.hair = r(HAIRS.length); c.bang = r(BANGS.length); c.hairColor = r(HAIR_COLORS.length); c.top = r(TOPS.length); c.bottom = r(BOTTOMS.length);
   return c;
 }
 
@@ -1059,7 +1087,7 @@ const PAIR_TEXT = {
 /* ---------- 角色編碼（放進網址） ---------- */
 const ENC_VER = 1;
 const ENC_PARTS = ['face', 'chin', 'brows', 'eyes', 'nose', 'mouth', 'ears', 'shoulder', 'hand', 'stance'];
-const ENC_TAIL = [['skin', SKINS.length], ['hair', HAIRS.length], ['hairColor', HAIR_COLORS.length], ['top', TOPS.length], ['bottom', BOTTOMS.length], ['gender', 2]];
+const ENC_TAIL = [['skin', SKINS.length], ['hair', HAIRS.length], ['hairColor', HAIR_COLORS.length], ['top', TOPS.length], ['bottom', BOTTOMS.length], ['gender', 2], ['bang', BANGS.length]];
 function encodeChar(c) {
   const b = [ENC_VER];
   ENC_PARTS.forEach(k => b.push(c[k] || 0));   // stance 已停用，位置留著讓舊連結能開

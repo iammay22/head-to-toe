@@ -311,6 +311,15 @@
    "h": 86,
    "ph": false
   },
+  "face_earth_base": {
+   "s": "head",
+   "x": 265,
+   "y": 50,
+   "w": 495,
+   "h": 715,
+   "ph": false,
+   "chinY": 756
+  },
   "face_long_base": {
    "s": "head",
    "x": 282,
@@ -337,15 +346,6 @@
    "h": 730,
    "ph": false,
    "chinY": 771
-  },
-  "face_oval_round": {
-   "s": "head",
-   "x": 265,
-   "y": 50,
-   "w": 495,
-   "h": 715,
-   "ph": false,
-   "chinY": 756
   },
   "face_round_base": {
    "s": "head",
@@ -509,6 +509,15 @@
    "h": 445,
    "ph": false
   },
+  "face_oval_round": {
+   "s": "head",
+   "x": 263,
+   "y": 44,
+   "w": 499,
+   "h": 688,
+   "ph": true,
+   "chinY": 730
+  },
   "face_square_round": {
    "s": "head",
    "x": 263,
@@ -626,15 +635,6 @@
    "ph": true,
    "chinY": 764
   },
-  "face_earth_base": {
-   "s": "head",
-   "x": 256,
-   "y": 44,
-   "w": 512,
-   "h": 688,
-   "ph": true,
-   "chinY": 730
-  },
   "face_earth_round": {
    "s": "head",
    "x": 256,
@@ -688,6 +688,46 @@
    "h": 290,
    "ph": true,
    "behind": true
+  },
+  "bangs_straight": {
+   "s": "head",
+   "x": 212,
+   "y": 7,
+   "w": 600,
+   "h": 420,
+   "ph": true
+  },
+  "bangs_airy": {
+   "s": "head",
+   "x": 212,
+   "y": 7,
+   "w": 600,
+   "h": 420,
+   "ph": true
+  },
+  "bangs_side": {
+   "s": "head",
+   "x": 212,
+   "y": 7,
+   "w": 600,
+   "h": 420,
+   "ph": true
+  },
+  "bangs_center": {
+   "s": "head",
+   "x": 212,
+   "y": 7,
+   "w": 600,
+   "h": 420,
+   "ph": true
+  },
+  "bangs_curtain": {
+   "s": "head",
+   "x": 212,
+   "y": 7,
+   "w": 600,
+   "h": 420,
+   "ph": true
   },
   "hair_short_front": {
    "s": "head",
@@ -746,6 +786,62 @@
    "ph": true
   },
   "hair_bun_front": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_buzz_front": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_medium_front": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_medium_back": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_wavy_front": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_wavy_back": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_twintail_front": {
+   "s": "head",
+   "x": 72,
+   "y": -123,
+   "w": 880,
+   "h": 1500,
+   "ph": true
+  },
+  "hair_twintail_back": {
    "s": "head",
    "x": 72,
    "y": -123,

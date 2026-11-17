@@ -159,6 +159,14 @@ def extract_neck(a, alpha, hm, chin, cx, fade=None):
     return col, ndi.gaussian_filter(al, .6)
 
 
+def hair_gray(rgb, al):
+    """頭髮統一轉成淺灰，遊戲裡再用乘法上色，才能換髮色。"""
+    l = lum(rgb)
+    ref = np.percentile(l[al > .8], 92) if (al > .8).sum() > 100 else 230
+    g = np.clip(l * (238 / max(ref, 1)), 0, 255)
+    return np.dstack([g, g, g])
+
+
 def save_layer(id_, rgb, alpha, space, extra=None, quality=92):
     a8 = np.clip(alpha * 255, 0, 255).astype(np.uint8)
     ys, xs = np.where(a8 > 6)
@@ -179,6 +187,7 @@ def save_layer(id_, rgb, alpha, space, extra=None, quality=92):
 
 
 FY = (lambda y: y, 1.0)
+ALIGN_FACES = {'face_earth', 'face_fire'}   # 這幾張是後來另外畫的，頭的大小跟標準頭不同，要先對齊
 
 
 def add_face_svg(id_, x, y, w, h, body, extra=None):
@@ -266,7 +275,7 @@ def process_head():
         new, gain = normalize_skin(new, patch, SKIN)
         kind = name.split('_')[0]
         try:
-            if kind == 'face' and '_chin_' not in name:
+            if kind == 'face' and '_chin_' not in name and name not in ALIGN_FACES:
                 raise SystemExit   # 各臉型本來就跟標準頭畫在一起，寬窄是臉型本身，不能拉
             ng = face_geo(new, new_alpha)
             new, new_alpha, moved = align_to(new, new_alpha, ng, ref_geo, kind not in ('eyes', 'brows', 'nose', 'mouth'))
@@ -316,6 +325,17 @@ def process_head():
                 sz = ndi.sum(al > .2, lab, range(1, n + 1)); big = [i + 1 for i in np.argsort(sz)[-2:]]
                 al = al * ndi.binary_dilation(np.isin(lab, big), iterations=3)
             save_layer(name, new, al, 'head')
+        elif kind == 'bangs':   # 前髮：整片蓋在臉上面
+            al = cut_outer(new, new_alpha, base, base_alpha)
+            save_layer(name, hair_gray(new, al), al, 'head')
+        elif kind == 'hairback':   # 後髮：頭上和臉旁邊那塊畫在臉前面（over），其餘畫在脖子、身體後面（under）
+            al = cut_outer(new, new_alpha, base, base_alpha)
+            g = hair_gray(new, al)
+            near = ndi.binary_dilation(hmask, iterations=55)
+            near[geo['chin'] - 30:] = False
+            ov = ndi.gaussian_filter(near.astype(np.float32), 3)
+            save_layer(name + '_over', g, al * ov, 'head')
+            save_layer(name + '_under', g, al * (1 - ov), 'head')
         elif kind in ('hair', 'acc'):
             save_layer(name if kind != 'hair' else name + '_front', new,
                        cut_outer(new, new_alpha, base, base_alpha), 'head')
@@ -390,7 +410,10 @@ def process_body(head_geo):
         new, na = key(load(path, (BW, BH)))
         new, _ = normalize_skin(new, hand_patch, SKIN)
         kind = name.split('_')[0]
-        if kind in ('top', 'bottom', 'acc', 'dress'):
+        if kind == 'hairback':   # 長髮超出頭部特寫的那段，用全身圖補
+            al = cut_outer(new, na, full_base, full_alpha)
+            save_layer('hairbody_' + name.split('_', 1)[1], hair_gray(new, al), al, 'body')
+        elif kind in ('top', 'bottom', 'acc', 'dress', 'shoes'):
             save_layer(name, new, cut_outer(new, na, full_base, full_alpha), 'body')
         else:
             LOG.append(f'!! raw/body/{name}: 看不懂的檔名，略過')
@@ -586,6 +609,22 @@ def placeholder_hair(geo):
     styles['long'] = (side(top + 900) + cap(.40), back(top + 1230, 345))
     styles['ponytail'] = (cap(.42), f'<path d="M {cx+170},{top+60} Q {cx+420},{top+80} {cx+390},{top+420} Q {cx+375},{top+640} {cx+300},{top+760} Q {cx+290},{top+520} {cx+250},{top+330} Z" fill="#cfcfd4" {st}/>')
     styles['bun'] = (f'<circle cx="{cx}" cy="{top-58}" r="92" fill="{fill}" {st}/>' + cap(.42), None)
+    styles['buzz'] = (cap(.30, 8), None)
+    styles['medium'] = (side(top + 820) + cap(.40), back(top + 900, 340))
+    styles['wavy'] = (side(top + 900) + cap(.40), back(top + 1230, 380))
+    tail = lambda sx: (f'<path d="M {cx+sx*230},{top+120} Q {cx+sx*420},{top+160} {cx+sx*400},{top+520} '
+                       f'Q {cx+sx*380},{top+760} {cx+sx*320},{top+880} Q {cx+sx*300},{top+560} {cx+sx*250},{top+330} Z" fill="#cfcfd4" {st}/>')
+    styles['twintail'] = (cap(.42), tail(1) + tail(-1))
+    # 前髮佔位：只有瀏海那一片
+    bang_paths = {
+        'straight': f'M {cx-235},{top+90} Q {cx},{top-10} {cx+235},{top+90} L {cx+230},{top+250} L {cx-230},{top+250} Z',
+        'airy': f'M {cx-220},{top+90} Q {cx},{top} {cx+220},{top+90} L {cx+200},{top+225} L {cx+120},{top+200} L {cx+40},{top+230} L {cx-40},{top+205} L {cx-120},{top+232} L {cx-200},{top+210} Z',
+        'side': f'M {cx-240},{top+110} Q {cx-60},{top-10} {cx+240},{top+110} L {cx+250},{top+300} Q {cx+80},{top+140} {cx-230},{top+200} Z',
+        'center': f'M {cx-245},{top+110} Q {cx},{top-10} {cx+245},{top+110} L {cx+260},{top+330} Q {cx+120},{top+140} {cx},{top+90} Q {cx-120},{top+140} {cx-260},{top+330} Z',
+        'curtain': f'M {cx-245},{top+110} Q {cx},{top-10} {cx+245},{top+110} L {cx+250},{top+290} Q {cx+70},{top+220} {cx+20},{top+150} L {cx-20},{top+150} Q {cx-70},{top+220} {cx-250},{top+290} Z',
+    }
+    for name, d in bang_paths.items():
+        add_svg('bangs_' + name, 'head', cx - 300, top - 40, 600, 420, f'<path d="{d}" fill="{fill}" {st}/>')
     for name, (front, bk) in styles.items():
         add_svg(f'hair_{name}_front', 'head', cx - 440, top - 170, 880, 1500, front)
         if bk:
