@@ -45,6 +45,11 @@ footer{text-align:center;font-size:12px;opacity:.7;padding:6px;flex:none}
 #view{width:100%;height:100%;display:block}
 .chips{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;font-size:12px;pointer-events:none}
 .chips span{background:rgba(255,250,245,.9);border-radius:10px;padding:3px 8px;align-self:flex-start}
+#handView{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:rgba(255,246,240,.82);backdrop-filter:blur(2px);padding:44px 16px 16px}
+#handView.on{display:flex}
+#handView img{max-height:68%;max-width:80%;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(120,80,90,.18));animation:pop .25s}
+#handView b{font-size:18px}#handView small{font-size:13px;opacity:.75}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
 .zoom{position:absolute;right:8px;top:8px;background:rgba(255,250,245,.9);border-radius:12px;padding:6px 10px;font-size:13px}
 .tabs{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;flex:none;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -171,6 +176,7 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
   <section class="screen" id="make">
     <div class="stage">
       <canvas id="view"></canvas>
+      <div id="handView"></div>
       <div class="chips" id="chips"></div>
       <button class="zoom" id="zoomBtn">看全身</button>
     </div>
@@ -440,7 +446,7 @@ let clothTab = 'top';
 const TABS = [
   ['gender', '性別', 'full'],  ['face', '臉型', 'head'], ['chin', '下巴', 'head'], ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
   ['nose', '鼻', 'head'], ['mouth', '嘴', 'head'], ['ears', '耳', 'head'], ['moles', '痣', 'head'],
-  ['ratio', '比例', 'head'], ['hair', '髮型', 'head'], ['skin', '膚色', 'full'], ['body', '身體', 'full'], ['clothes', '服裝', 'full'],
+  ['ratio', '比例', 'head'], ['hair', '髮型', 'head'], ['skin', '膚色', 'full'], ['body', '身體', 'full'], ['hand', '手', 'hand'], ['clothes', '服裝', 'full'],
 ];
 
 /* ================= 判定（只讀上面的表，不含隨機） ================= */
@@ -608,15 +614,18 @@ function renderHead(c) {
   const fid = faceId(c), fm = META.faces[fid] || {hwEar: HD.hwEar};
   const earId = 'ears_' + PARTS.ears.options[c.ears].id, earDx = (fm.hwEar || HD.hwEar) - HD.hwEar;
   const lowK = 1 + sl(c.lower, .07), fy = sl(c.featY, 14);
-  const skinKey = [fid, earId, c.skin, c.lower, c.featY].join('|');
+  const skinKey = [fid, earId, c.skin, c.lower, c.featY, c.gender].join('|');
   if (cache.skin !== skinKey) {
     const s = skinC.getContext('2d', {willReadFrequently: true}); s.clearRect(0, 0, HC_W, 1300); s.save(); s.translate(0, OY);
+    // 脖子用頭部特寫裡的高解析度版本，墊在臉下面，接縫才不會糊
+    const nk = c.gender === 1 && IT.neck_m ? 'neck_m' : 'neck_f';
+    if (IMG[nk]) { const n = IT[nk]; s.drawImage(IMG[nk], n.x, n.y + (HD.chin - STRETCH_Y) * (lowK - 1), n.w, n.h); }
     drawPair(s, earId, {dx: earDx, dy: fy});
     const it = IT[fid], im = IMG[fid], ry = im.naturalHeight / it.h, hTop = STRETCH_Y - it.y;
     s.drawImage(im, 0, 0, im.naturalWidth, hTop * ry, it.x, it.y, it.w, hTop);
     s.drawImage(im, 0, hTop * ry, im.naturalWidth, (it.h - hTop) * ry, it.x, STRETCH_Y - .5, it.w, (it.h - hTop) * lowK + .5);
     s.restore();
-    const d = s.getImageData(0, OY, HC_W, 1000); recolorSkin(d.data, SKINS[c.skin], 95, 55, true); s.putImageData(d, 0, OY);
+    const d = s.getImageData(0, OY, HC_W, 1060); recolorSkin(d.data, SKINS[c.skin], 95, 55, true); s.putImageData(d, 0, OY);
     cache.skin = skinKey;
   }
   const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0, HC_W, 1300, 0, 0, HC_W, 1300); h.save(); h.translate(0, OY);
@@ -655,6 +664,17 @@ function renderHead(c) {
     cache.hair = hairKey;
   }
   if (hid !== 'none') h.drawImage(hairFC, 0, 0, HC_W, usedH(c), 0, 0, HC_W, usedH(c));
+}
+// 手的特寫跟著膚色換色，換過的存起來
+const handCache = {};
+function handSrc(id, skin) {
+  const k = id + '|' + skin, im = IMG['hand_' + id]; if (!im) return '';
+  if (handCache[k]) return handCache[k];
+  if (!skin) return handCache[k] = IT['hand_' + id].src;
+  const cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+  const x = cv.getContext('2d'); x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, cv.width, cv.height);
+  recolorSkin(d.data, SKINS[skin], 95, 55, true); x.putImageData(d, 0, 0);
+  return handCache[k] = cv.toDataURL();
 }
 const bodyId = c => c.gender === 1 && IMG.body_base_m ? 'body_base_m' : 'body_base';
 function renderBody(c) {
@@ -729,7 +749,7 @@ function drawCached(ctx, c) {
 // 鏡頭：把身體座標裡的一塊區域放進畫布
 const CAM = {full: [150, 70, 930, 1900], head: [AN.cx - 205, AN.top - 70, AN.cx + 205, AN.chin + 95]};
 function camFor(view, c) {
-  const r = CAM[view].slice();
+  const r = CAM[view === 'hand' ? 'full' : view].slice();
   if (view === 'head') { const hK = hKof(c), lift = (Z.ground - Z.hip) * sl(c.legs, .06);
     const f = y => Z.ground + (y - lift - Z.ground) * hK; r[1] = f(r[1]); r[3] = f(r[3]); }
   return r;
@@ -763,8 +783,14 @@ function redraw() {
   stepCam();
   const chips = [];
   if (view === 'full') { chips.push('手：' + PARTS.hand.options[ch.hand].name); }
+  const hv = $('handView'), ho = PARTS.hand.options[ch.hand];
+  hv.classList.toggle('on', view === 'hand');
+  if (view === 'hand' && hv.dataset.i !== String(ch.hand) + ch.skin) {
+    hv.dataset.i = String(ch.hand) + ch.skin;
+    hv.innerHTML = '<img src="' + handSrc(ho.id, ch.skin) + '" alt=""><b>' + ho.name + '</b><small>' + ho.text + '</small>';
+  }
   $('chips').innerHTML = chips.map(t => '<span>' + t + '</span>').join('');
-  $('zoomBtn').textContent = view === 'head' ? '看全身' : '看臉';
+  $('zoomBtn').textContent = view === 'full' ? '看臉' : '看全身';
 }
 function change(fn, quiet) {
   undoStack.push(JSON.stringify(ch)); if (undoStack.length > 40) undoStack.shift();
@@ -789,13 +815,14 @@ function renderPanel() {
   const p = $('panel'); let h = '';
   if (tab === 'gender') h = '<div class="note">性別只改變身形和脖子，不影響看相結果。</div><div class="grid" style="grid-template-columns:repeat(2,1fr)">' + GENDERS.map((g, i) => '<button class="opt' + (ch.gender === i ? ' on' : '') + '" data-k="gender" data-i="' + i + '"><span style="font-size:17px">' + g + '</span></button>').join('') + '</div>';
   else if (tab === 'face') h = optGrid('face', o => 'face_' + o.id + '_base');
-  else if (tab === 'chin') h = '<div class="note">下巴的正式圖還沒補上，現在選了會算進看相，畫面先用同臉型的圖。</div>' + optGrid('chin', o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_' + PARTS.face.options[ch.face].id + '_' + o.id);
+  else if (tab === 'chin') h = optGrid('chin', o => { if (o.id === 'double' || o.id === 'cleft') return 'chinmark_' + o.id; const k = 'face_' + PARTS.face.options[ch.face].id + '_' + o.id; return IT[k] ? k : 'face_oval_' + o.id; });
   else if (['brows', 'eyes', 'nose', 'mouth', 'ears'].includes(tab)) h = optGrid(tab, o => tab + '_' + o.id);
   else if (tab === 'moles') h = '<div class="note">最多選 3 顆，再點一次可以拿掉。</div><div class="grid">' + MOLES.map(m => '<button class="opt' + (ch.moles.includes(m.id) ? ' on' : '') + '" data-mole="' + m.id + '"><span>' + m.name + '</span></button>').join('') + '</div>';
   else if (tab === 'ratio') h = '<div class="note">額頭、鼻子、下巴三段叫「三停」，哪一段最長，就看哪個時期最旺。</div>' + sliderRows('ratio');
   else if (tab === 'hair') h = '<div class="grid">' + HAIRS.map((o, i) => '<button class="opt' + (ch.hair === i ? ' on' : '') + '" data-k="hair" data-i="' + i + '">' + (o.id === 'none' ? '' : thumb('hair_' + o.id + '_front') + phTag('hair_' + o.id + '_front')) + '<span>' + o.name + '</span></button>').join('') + '</div><div class="group">髮色</div>' + swatches('hairColor', HAIR_COLORS, c => c);
+  else if (tab === 'hand') h = '<div class="note">手相看的是整隻手的形狀，選好會放大給你看。</div>' + optGrid('hand', o => 'hand_' + o.id);
   else if (tab === 'skin') h = '<div class="note">膚色不算在相裡，選你喜歡的。</div>' + swatches('skin', SKINS, c => 'rgb(' + c.join(',') + ')');
-  else if (tab === 'body') h = '<div class="group">肩</div>' + optGrid('shoulder') + '<div class="group">手</div>' + optGrid('hand', o => 'hand_' + o.id) + '<div class="group">身形</div>' + sliderRows('body');
+  else if (tab === 'body') h = '<div class="group">肩</div>' + optGrid('shoulder') + '<div class="group">身形</div>' + sliderRows('body');
   else if (tab === 'clothes') {
     const cat = CLOTHES.find(x => x.id === clothTab);
     h = '<div class="subtabs">' + CLOTHES.map(x => '<button class="' + (x.id === clothTab ? 'on' : '') + (x.items.length ? '' : ' soon') + '" data-ct="' + x.id + '">' + x.label + '</button>').join('') + '</div>' +
@@ -946,7 +973,7 @@ $('panel').addEventListener('input', e => {
   if (!slideRaf) slideRaf = requestAnimationFrame(() => { slideRaf = 0; redraw(); });
 });
 $('panel').addEventListener('change', e => { if (e.target.dataset.s) { e.target._h = 0; persist(); } });
-$('zoomBtn').onclick = () => { view = view === 'head' ? 'full' : 'head'; redraw(); };
+$('zoomBtn').onclick = () => { view = view === 'full' ? 'head' : 'full'; redraw(); };
 $('randBtn').onclick = () => { change(() => { ch = randomChar(); }); renderPanel(); };
 $('undoBtn').onclick = () => { if (!undoStack.length) return; ch = JSON.parse(undoStack.pop()); persist(); snd.tick(); renderPanel(); redraw(); };
 $('readBtn').onclick = startReading;

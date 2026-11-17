@@ -104,6 +104,61 @@ def head_mask(a, alpha, seed, reach):
     return ndi.binary_dilation(face | near, iterations=2), face
 
 
+def face_geo(a, alpha, seed=(512, 250)):
+    """量臉：頭頂、下巴、額頭那一列的寬度和中心（額頭量不到耳朵，比較準）。"""
+    f = face_component(a, alpha, seed)
+    ys = np.where(f.any(1))[0]
+    top, chin = int(ys.min()), int(ys.max())
+    xx = np.where(f[top + 200])[0]
+    return dict(top=top, chin=chin, w=float(xx.max() - xx.min()), cx=float((xx.max() + xx.min()) / 2))
+
+
+def align_to(a, alpha, g, ref, keep_ratio):
+    """把這張圖的臉對齊到標準頭：寬度、中心、頭頂對齊。
+    keep_ratio=False 時連下巴也對齊（五官照臉的比例放），True 時等比例（臉型、下巴要保留原本的長度）。"""
+    sx = ref['w'] / g['w']
+    sy = sx if keep_ratio else (ref['chin'] - ref['top']) / (g['chin'] - g['top'])
+    ox, oy = g['cx'] - ref['cx'] / sx, g['top'] - ref['top'] / sy
+    if abs(sx - 1) < .015 and abs(sy - 1) < .015 and abs(ox) < 4 and abs(oy) < 4:
+        return a, alpha, False
+    tf = lambda ch, cval: ndi.affine_transform(ch, (1 / sy, 1 / sx), offset=(oy, ox), order=1, mode='constant', cval=cval)
+    out = np.dstack([tf(a[..., i], 0.0) for i in range(3)])
+    return out, np.clip(tf(alpha, 0.0), 0, 1), (round(sx, 3), round(sy, 3))
+
+
+def extract_neck(a, alpha, hm, chin, cx, fade=None):
+    """從頭部特寫切出高解析度的脖子：下巴下面那塊皮膚，接近衣領的地方淡出，
+    下巴底下再往上補到 y=480，換成任何下巴形狀都不會露出縫。"""
+    skin = (alpha > .5) & (lum(a) > 95) & (a[..., 0] - a[..., 2] > 18) & ~hm
+    lab, _ = ndi.label(skin)
+    k = lab[chin + 40, int(cx)]
+    if k == 0:
+        return None
+    neck = lab == k
+    neck[:chin - 150] = False
+    gray = (alpha > .5) & (np.abs(a[..., 0] - a[..., 2]) < 16) & (lum(a) > 140)
+    neck = ndi.binary_fill_holes(neck)
+    outl = ndi.binary_dilation(neck, iterations=6) & (alpha > .3) & ~gray & ~hm
+    m = neck | outl
+    m[:chin - 150] = False
+    dist = ndi.distance_transform_edt(~gray)
+    al = alpha * m * np.clip((dist - 4) / 36, 0, 1)
+    col = a.copy()
+    r0 = chin + 18
+    row = np.where(m[r0])[0]
+    x0, x1 = row.min(), row.max() + 1
+    src = ndi.gaussian_filter1d(a[r0, x0:x1], 10, axis=0)
+    src[:5], src[-5:] = a[r0, x0:x0 + 5], a[r0, x1 - 5:x1]   # 兩邊的外框線保留
+    for y in range(480, r0):
+        fill = ~m[y, x0:x1]
+        col[y, x0:x1][fill] = src[fill]
+        al[y, x0:x1] = np.where(fill, alpha[r0, x0:x1] * m[r0, x0:x1], al[y, x0:x1])
+    if fade:   # 只負責下巴接縫，往下交給身體圖的脖子和衣領
+        yy = np.arange(a.shape[0])[:, None]
+        al = al * np.clip((chin + fade[1] - yy) / (fade[1] - fade[0]), 0, 1)
+    return col, ndi.gaussian_filter(al, .6)
+
+
 def save_layer(id_, rgb, alpha, space, extra=None, quality=92):
     a8 = np.clip(alpha * 255, 0, 255).astype(np.uint8)
     ys, xs = np.where(a8 > 6)
@@ -189,10 +244,13 @@ def process_head():
     patch = (300, 380, 450, 574)
     SKIN = tuple(float(v) for v in np.median(base[300:380, 450:574].reshape(-1, 3), 0).round(1))
     seed = (HS // 2, 400)
+    ref_geo = face_geo(base, base_alpha)
     hmask, face = head_mask(base, base_alpha, seed, 12)
     inner_base = ndi.binary_erosion(face, iterations=8)
     soft = lambda m: ndi.gaussian_filter(m.astype(np.float32), 0.8)
     save_layer('face_oval_base', base, base_alpha * soft(hmask), 'head')
+    nk = extract_neck(base, base_alpha, hmask, int(np.where(face)[0].max()), HS / 2)
+    if nk: save_layer('neck_f', nk[0], nk[1], 'head')
 
     ys, xs = np.where(face)
     geo = dict(top=int(ys.min()) - 7, chin=int(ys.max()) + 7, cx=float((xs.min() + xs.max()) / 2))
@@ -206,24 +264,59 @@ def process_head():
         new = load(path, (HS, HS))
         new, new_alpha = key(new)
         new, gain = normalize_skin(new, patch, SKIN)
-        top_shift = int((np.abs(new_alpha[:500] - base_alpha[:500]) > 0.5).sum())
-        note = f'膚色校正 {np.round(gain, 3).tolist() if gain is not None else "略過"}，上半外框差 {top_shift}px'
         kind = name.split('_')[0]
+        try:
+            if kind == 'face' and '_chin_' not in name:
+                raise SystemExit   # 各臉型本來就跟標準頭畫在一起，寬窄是臉型本身，不能拉
+            ng = face_geo(new, new_alpha)
+            new, new_alpha, moved = align_to(new, new_alpha, ng, ref_geo, kind not in ('eyes', 'brows', 'nose', 'mouth'))
+        except SystemExit:
+            ng, moved = None, False
+        top_shift = int((np.abs(new_alpha[:500] - base_alpha[:500]) > 0.5).sum())
+        note = (f'對齊 {moved}，' if moved else '') + f'膚色校正 {np.round(gain, 3).tolist() if gain is not None else "略過"}，上半外框差 {top_shift}px'
         if name == 'base_m':   # 男生的標準頭（鵝蛋臉）
             hm, fc = head_mask(new, new_alpha, seed, 12)
             save_layer('face_oval_base_m', new, new_alpha * soft(hm), 'head', dict(chinY=int(np.where(fc)[0].max()) + 7))
+            nk = extract_neck(new, new_alpha, hm, int(np.where(fc)[0].max()), HS / 2, fade=(90, 150))
+            if nk: save_layer('neck_m', nk[0], nk[1], 'head')
         elif kind == 'face':
             parts = name.split('_')
             id_ = f'face_{parts[1]}_{parts[3] if len(parts) > 3 else "base"}'
             hm, fc = head_mask(new, new_alpha, seed, 12)
             fy = np.where(fc)[0]
             save_layer(id_, new, new_alpha * soft(hm), 'head', dict(chinY=int(fy.max()) + 7))
-        elif kind in ('eyes', 'brows', 'nose', 'mouth', 'chinmark'):
+        elif kind == 'chinmark':   # 雙下巴、美人溝：只取下巴附近比皮膚暗的線條和陰影，位置記成相對下巴
+            _, fc = head_mask(new, new_alpha, seed, 12)
+            ys = np.where(fc.any(1))[0]; chin = int(ys.max())
+            band = np.zeros_like(fc); band[chin - 120:chin - 3, int(geo['cx']) - 150:int(geo['cx']) + 150] = True
+            inner = ndi.binary_erosion(fc, iterations=5) & band
+            al = np.clip((np.mean(SKIN) - 8 - lum(new)) / 55, 0, 1) * inner
+            al = ndi.gaussian_filter(al, .6)
+            col = np.clip(base + (new - base) / np.maximum(al, .3)[..., None], 0, 255)
+            save_layer(name, new, al, 'head', dict(rel='chin'))
+            ITEMS[name]['y'] -= chin + 7
+        elif kind in ('eyes', 'brows', 'nose', 'mouth'):
             _, fc = head_mask(new, new_alpha, seed, 12)
             inner = inner_base & ndi.binary_erosion(fc, iterations=8)
+            box = {'nose': (320, 610, 125), 'mouth': (525, 680, 135)}.get(kind)
+            if box:   # 新一批的圖臉頰陰影跟標準頭不一樣，只在五官附近找差異
+                lim = np.zeros_like(inner); cx = int(geo['cx'])
+                lim[box[0]:box[1], cx - box[2]:cx + box[2]] = True
+                inner = inner & lim
             col, al = cut_inner(new, base, inner)
             save_layer(name, col, al, 'head')
-        elif kind in ('ears', 'hair', 'acc'):
+        elif kind == 'ears':   # 耳朵只留臉外側那兩塊，臉本身的差異不要
+            al = cut_outer(new, new_alpha, base, base_alpha)
+            _, fc = head_mask(new, new_alpha, seed, 12)
+            side = np.zeros_like(fc); side[280:860] = True
+            side[:, int(geo['cx']) - 200:int(geo['cx']) + 200] = False
+            al = al * (side & ~ndi.binary_erosion(face, iterations=6))
+            lab, n = ndi.label(al > .2)
+            if n:
+                sz = ndi.sum(al > .2, lab, range(1, n + 1)); big = [i + 1 for i in np.argsort(sz)[-2:]]
+                al = al * ndi.binary_dilation(np.isin(lab, big), iterations=3)
+            save_layer(name, new, al, 'head')
+        elif kind in ('hair', 'acc'):
             save_layer(name if kind != 'hair' else name + '_front', new,
                        cut_outer(new, new_alpha, base, base_alpha), 'head')
         else:
