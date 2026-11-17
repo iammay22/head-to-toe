@@ -129,6 +129,16 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
 .spot.hand{left:10px;bottom:10%;top:auto;transform:none;height:auto;padding:4px 8px;display:flex;flex-direction:column;align-items:center;background:rgba(255,250,245,.95);color:var(--text)}
 .spot.hand img{width:44px;height:44px}.spot.hand.sel{background:#e9dde3;border-color:var(--text)}.spot.hand.best{background:#f6e7b8;border-color:var(--gold)}
 .bdialog{flex:none;padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:52dvh;overflow-y:auto}
+.insp{display:flex;gap:10px;align-items:center;background:#fff;border:2px solid var(--pink);border-radius:12px;padding:8px 10px;font-size:14px;line-height:1.55}.insp img{width:56px;height:42px;object-fit:contain;flex:none}
+.linkbtn{font-size:13.5px;color:var(--text);opacity:.75;text-decoration:underline;padding:6px;align-self:center}
+.spot.seen:not(.sel):not(.best){background:rgba(150,120,140,.9)}
+.rankbtn{width:34px;height:34px;border-radius:50%;background:var(--card);font-size:16px;box-shadow:0 3px 0 #e2ccd6}
+#rankList{overflow-y:auto;max-height:50dvh;display:flex;flex-direction:column;gap:5px}
+.rk{display:grid;grid-template-columns:2.2em 1fr auto auto;gap:8px;align-items:center;background:var(--card);border-radius:10px;padding:8px 10px;font-size:14px}
+.rk.me{background:#fff;border:2px solid var(--pink)}.rk b{text-align:center}.rk small{font-size:10.5px;background:var(--mint);border-radius:6px;padding:0 5px;margin-left:5px}.rk.me small{background:var(--pink);color:#fff}
+.rk em{font-style:normal;font-size:12px;opacity:.7}.rk i{font-style:normal;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.subtabs{display:flex;gap:6px;overflow-x:auto;margin:2px 0 10px;padding-bottom:4px;scrollbar-width:none}
+.subtabs button{flex:none;padding:7px 14px;border-radius:10px;background:var(--card);font-size:14px;border:2px solid transparent;box-shadow:0 3px 0 #e2ccd6}.subtabs button.soon{opacity:.55}.subtabs button.on{border-color:var(--gold);background:#fff}
 .bline{background:var(--card);border-radius:14px;padding:10px 12px;font-size:15.5px;line-height:1.6}
 #bOpts{display:flex;flex-direction:column;gap:11px;padding-bottom:5px}#bOpts:empty{display:none}#bOpts .btn{padding:11px;font-size:15.5px}
 .adv{display:flex;gap:8px}.adv .btn{flex:1;padding:12px 2px!important}
@@ -230,7 +240,7 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
   </section>
 
   <section class="screen" id="booth">
-    <div class="bhud"><b id="bName"></b><span id="bRep"></span><span id="bCoin"></span><span id="bNo"></span></div>
+    <div class="bhud"><b id="bName"></b><span id="bRep"></span><span id="bCoin"></span><span id="bNo"></span><button id="bRank" class="rankbtn" aria-label="排行榜">🏆</button></div>
     <div class="bstage" id="bStage"><canvas id="bView"></canvas><div id="bSpots"></div><div class="bsign" id="bSign"></div><div class="bprop" id="bProp"></div></div>
     <div class="bdialog"><div class="bline" id="bLine"></div><div class="note" id="bStep"></div><div id="bOpts"></div><div id="bFeed"></div><button class="btn main" id="bNext" style="display:none">下一位</button></div>
   </section>
@@ -241,6 +251,12 @@ input.txt{width:100%;padding:12px;border-radius:12px;border:2px solid #e6d3db;fo
     <div id="dexBody"></div>
   </section>
 </main>
+<div class="sheet" id="rankSheet"><div class="in" style="max-height:86dvh">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">🏆 相士排行榜</b><button id="rankClose" style="font-size:22px;width:40px;height:40px">×</button></div>
+  <div class="linkrow"><input class="txt" id="rankNick" maxlength="8" placeholder="取個相士名號"><button class="btn" id="rankSave" style="width:auto;padding:10px 14px">改名</button></div>
+  <div id="rankList"></div>
+  <div class="note" id="rankMsg" style="margin:0"></div>
+</div></div>
 <div class="sheet" id="pairSheet"><div class="in">
   <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">找人合盤</b><button id="sheetClose" style="font-size:22px;width:40px;height:40px">×</button></div>
   <div class="note" style="margin:0">傳連結給對方，對方捏完角色，就能看到你們合不合。</div>
@@ -330,12 +346,6 @@ const PARTS = {
     {id: 'square',  name: '手掌方正', text: '務實肯做', s: [0,0,2,0]},
     {id: 'small',   name: '手小巧',   text: '靈巧會照顧人', s: [0,1,0,1]},
   ]},
-  stance: {label: '站姿', options: [
-    {id: 'upright', name: '抬頭挺胸', text: '自信大方', s: [0,0,1,1]},
-    {id: 'casual',  name: '三七步',   text: '隨性好相處', s: [0,0,0,2]},
-    {id: 'crossed', name: '雙手抱胸', text: '謹慎有防備心', s: [1,0,1,0]},
-    {id: 'pocket',  name: '手插口袋', text: '酷酷的，很有吸引力', s: [0,2,0,0]},
-  ]},
 };
 const MOLES = [
   {id: 'brow',  name: '眉中', text: '草裡藏珠，有藏著的才華，遇到機會就發光', s: [0,0,1,0]},
@@ -423,6 +433,10 @@ const BOTTOMS = [
   {name: '牛仔短褲', c: [92,116,156], short: 1}, {name: '白短褲', c: [248,248,248], short: 1},
 ];
 const GENDERS = ['女生', '男生'];
+// 服裝分類：之後有新種類，在這裡加 items 就會開放
+const CLOTHES = [{id: 'top', label: '上半身', items: TOPS}, {id: 'bottom', label: '下半身', items: BOTTOMS},
+  {id: 'dress', label: '連身', items: []}, {id: 'shoes', label: '鞋子', items: []}, {id: 'acc', label: '配件', items: []}];
+let clothTab = 'top';
 const TABS = [
   ['gender', '性別', 'full'],  ['face', '臉型', 'head'], ['chin', '下巴', 'head'], ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
   ['nose', '鼻', 'head'], ['mouth', '嘴', 'head'], ['ears', '耳', 'head'], ['moles', '痣', 'head'],
@@ -472,6 +486,7 @@ function checkCopy() {
   const all = [JOKE, ...SAY, ...Object.values(PERIOD_TEXT), ...Object.values(SLIDER_TEXT), ...LUCK_TEXT.flat(),
     ...Object.values(SUMMARY).flatMap(o => Object.values(o)), ...Object.values(TITLES).flat(),
     ...BOOTH_Q.flat(), ...Object.values(BOOTH_Q2), ...ADVICE, ...ADV_WHY, ...BOOTH_GOOD, ...BOOTH_LEVELS.map(l => l.name), ...GUESTS.flatMap(g => [g.name, g.line, g.good, g.bad, g.dex, ...g.opts]),
+    ...NPC_RANK.map(n => n[0]), ...CLOTHES.map(x => x.label),
     ...MOLES.map(m => m.name + m.text), ...HIDDEN.map(h => h.name + h.hint + h.text), ...Object.values(LIUNIAN).flatMap(o => Object.values(o)),
     ...PAIR_TITLES.flatMap(t => Object.values(t[1])), ...QUIPS, ...Object.values(RUB), ...Object.values(PAIR_TEXT).filter(v => typeof v === 'string'), ...Object.values(PAIR_TEXT.egg), ...Object.values(PARTS).flatMap(p => p.options.map(o => o.name + o.text))];
   let bad = 0;
@@ -726,7 +741,7 @@ function paint(canvas, c, rect, bg) {
 /* ================= 介面 ================= */
 const $ = id => document.getElementById(id);
 let tab = 'gender', view = 'full', camNow = null, camAnim = 0, undoStack = [];
-function go(id) { const sh = document.getElementById('pairSheet'); if (sh) sh.classList.remove('on'); document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+function go(id) { document.querySelectorAll('.sheet').forEach(x => x.classList.remove('on')); document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
 function redraw() {
   const target = camFor(view, ch);
   if (!camNow) camNow = target;
@@ -739,7 +754,7 @@ function redraw() {
   };
   stepCam();
   const chips = [];
-  if (view === 'full') { chips.push('站姿：' + PARTS.stance.options[ch.stance].name + '（圖待補）'); chips.push('手：' + PARTS.hand.options[ch.hand].name); }
+  if (view === 'full') { chips.push('手：' + PARTS.hand.options[ch.hand].name); }
   $('chips').innerHTML = chips.map(t => '<span>' + t + '</span>').join('');
   $('zoomBtn').textContent = view === 'head' ? '看全身' : '看臉';
 }
@@ -772,8 +787,13 @@ function renderPanel() {
   else if (tab === 'ratio') h = '<div class="note">額頭、鼻子、下巴三段叫「三停」，哪一段最長，就看哪個時期最旺。</div>' + sliderRows('ratio');
   else if (tab === 'hair') h = '<div class="grid">' + HAIRS.map((o, i) => '<button class="opt' + (ch.hair === i ? ' on' : '') + '" data-k="hair" data-i="' + i + '">' + (o.id === 'none' ? '' : thumb('hair_' + o.id + '_front') + phTag('hair_' + o.id + '_front')) + '<span>' + o.name + '</span></button>').join('') + '</div><div class="group">髮色</div>' + swatches('hairColor', HAIR_COLORS, c => c);
   else if (tab === 'skin') h = '<div class="note">膚色不算在相裡，選你喜歡的。</div>' + swatches('skin', SKINS, c => 'rgb(' + c.join(',') + ')');
-  else if (tab === 'body') h = '<div class="group">肩</div>' + optGrid('shoulder') + '<div class="group">手</div>' + optGrid('hand', o => 'hand_' + o.id) + '<div class="group">站姿</div>' + optGrid('stance') + '<div class="group">身形</div>' + sliderRows('body');
-  else if (tab === 'clothes') h = '<div class="group">上衣（佔位）</div><div class="grid">' + TOPS.map((o, i) => '<button class="opt' + (ch.top === i ? ' on' : '') + '" data-k="top" data-i="' + i + '"><span class="sw" style="background:rgb(' + o.c.join(',') + ')"></span><span>' + o.name + '</span></button>').join('') + '</div><div class="group">下身（佔位）</div><div class="grid">' + BOTTOMS.map((o, i) => '<button class="opt' + (ch.bottom === i ? ' on' : '') + '" data-k="bottom" data-i="' + i + '"><span class="sw" style="background:rgb(' + o.c.join(',') + ')"></span><span>' + o.name + '</span></button>').join('') + '</div>';
+  else if (tab === 'body') h = '<div class="group">肩</div>' + optGrid('shoulder') + '<div class="group">手</div>' + optGrid('hand', o => 'hand_' + o.id) + '<div class="group">身形</div>' + sliderRows('body');
+  else if (tab === 'clothes') {
+    const cat = CLOTHES.find(x => x.id === clothTab);
+    h = '<div class="subtabs">' + CLOTHES.map(x => '<button class="' + (x.id === clothTab ? 'on' : '') + (x.items.length ? '' : ' soon') + '" data-ct="' + x.id + '">' + x.label + '</button>').join('') + '</div>' +
+      (cat.items.length ? '<div class="grid">' + cat.items.map((o, i) => '<button class="opt' + (ch[cat.id] === i ? ' on' : '') + '" data-k="' + cat.id + '" data-i="' + i + '"><span class="sw" style="background:rgb(' + o.c.join(',') + ')"></span><span>' + o.name + '</span><span class="ph">佔位</span></button>').join('') + '</div>'
+        : '<div class="note" style="text-align:center;margin-top:24px">' + cat.label + '還在準備，之後會開放。</div>');
+  }
   p.innerHTML = h;
 }
 function renderTabs() {
@@ -899,6 +919,7 @@ function saveCard() {
 $('tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; tab = b.dataset.t; view = TABS.find(t => t[0] === tab)[2]; snd.tick(); renderTabs(); renderPanel(); $('panel').scrollTop = 0; redraw(); });
 $('panel').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.ct) { clothTab = b.dataset.ct; snd.tick(); renderPanel(); return; }
   if (b.dataset.mole) {
     const id = b.dataset.mole;
     if (!ch.moles.includes(id) && ch.moles.length >= 3) return;
@@ -1006,7 +1027,7 @@ const ENC_PARTS = ['face', 'chin', 'brows', 'eyes', 'nose', 'mouth', 'ears', 'sh
 const ENC_TAIL = [['skin', SKINS.length], ['hair', HAIRS.length], ['hairColor', HAIR_COLORS.length], ['top', TOPS.length], ['bottom', BOTTOMS.length], ['gender', 2]];
 function encodeChar(c) {
   const b = [ENC_VER];
-  ENC_PARTS.forEach(k => b.push(c[k]));
+  ENC_PARTS.forEach(k => b.push(c[k] || 0));   // stance 已停用，位置留著讓舊連結能開
   SLIDERS.forEach(s => b.push(Math.round(c[s.id] / 5)));
   let m = 0; MOLES.forEach((x, i) => { if (c.moles.includes(x.id)) m |= 1 << i; }); b.push(m);
   ENC_TAIL.forEach(([k]) => b.push(c[k]));
@@ -1019,7 +1040,7 @@ function decodeChar(s) {
     if (!b.length || b[0] < 1 || b.length < 1 + ENC_PARTS.length) return null;
     const c = defaultChar(); let i = 1;
     const fit = (v, n) => (Number.isInteger(v) && v >= 0 && v < n) ? v : 0;
-    ENC_PARTS.forEach(k => { c[k] = fit(b[i++], PARTS[k].options.length); });
+    ENC_PARTS.forEach(k => { const v = b[i++]; if (PARTS[k]) c[k] = fit(v, PARTS[k].options.length); });
     SLIDERS.forEach(sd => { const v = b[i++]; c[sd.id] = v === undefined ? 50 : Math.min(100, v * 5); });
     const m = b[i++] || 0; c.moles = MOLES.filter((x, j) => m & (1 << j)).map(x => x.id).slice(0, 3);
     ENC_TAIL.forEach(([k, n]) => { c[k] = fit(b[i++], n); });
@@ -1434,13 +1455,13 @@ function paintBooth() {
 }
 function markSpots(best) {
   document.querySelectorAll('#bSpots .spot').forEach(b => {
-    b.classList.toggle('sel', bs.sel === b.dataset.p);
+    b.classList.toggle('sel', bs.sel === b.dataset.p); b.classList.toggle('seen', !!(bs.looked && bs.looked[b.dataset.p]));
     b.classList.toggle('best', !!best && best.includes(b.dataset.p));
     b.disabled = bs.phase !== 'part';
   });
 }
 function showCustomer() {
-  const cur = bs.list[bs.i]; bs.sel = null; bs.best = null; bs.phase = cur.guest ? 'guest' : 'part';
+  const cur = bs.list[bs.i]; bs.sel = null; bs.best = null; bs.looked = {}; bs.phase = cur.guest ? 'guest' : 'part';
   boothHud(); $('bProp').textContent = cur.guest ? cur.guest.prop : '';
   $('bLine').textContent = '「' + (cur.guest ? cur.guest.line : cur.q) + '」';
   $('bFeed').innerHTML = ''; $('bNext').style.display = 'none';
@@ -1448,7 +1469,7 @@ function showCustomer() {
     $('bStep').textContent = '特別的客人上門了。你怎麼回答？';
     $('bOpts').innerHTML = cur.guest.opts.map((t, i) => '<button class="btn" data-g="' + i + '">' + t + '</button>').join('');
   } else {
-    $('bStep').textContent = '第一步：這個問題要看哪裡？點客人身上的部位。';
+    $('bStep').textContent = '第一步：點客人身上的部位看看。可以多看幾個，再決定這題要看哪裡。';
     $('bOpts').innerHTML = '';
   }
   requestAnimationFrame(paintBooth); snd.pop();
@@ -1490,25 +1511,71 @@ function endDay() {
   const cv = $('bView'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height);
   $('bSpots').innerHTML = ''; $('bProp').textContent = '🌙';
   $('bLine').innerHTML = '今天收攤了。看了 5 位客人，完全看準 ' + bs.right + ' 位。<br>賺到 ' + bs.coins + ' 枚銅板，口碑 +' + bs.rep + '。'; $('bStep').textContent = '';
-  $('bFeed').innerHTML = '<div class="note">' + (next ? '口碑再 ' + (next.need - b.rep) + ' 點，就能升級成「' + next.name + '」。' : '你已經是名人御用的相師傅了。') + '看不準的時候，去圖鑑翻翻各部位的解讀。</div>';
-  $('bOpts').innerHTML = '<button class="btn main" data-day="1">再開一天</button><button class="btn" data-home="1">回首頁</button>';
+  $('bFeed').innerHTML = '<div class="note">目前排在第 ' + myRank() + ' 名。' + (next ? '口碑再 ' + (next.need - b.rep) + ' 點，就能升級成「' + next.name + '」。' : '你已經是名人御用的相師傅了。') + '看不準的時候，去圖鑑翻翻各部位的解讀。</div>';
+  $('bOpts').innerHTML = '<button class="btn main" data-day="1">再開一天</button><button class="btn" data-rank="1">🏆 看排行榜</button><button class="btn" data-home="1">回首頁</button>';
+  submitScore();
   $('bNext').style.display = 'none';
+}
+function inspectHtml(c, k) {
+  const o = PARTS[k].options[c[k]], aid = DEX_ASSET[k] && DEX_ASSET[k](o);
+  return '<div class="insp">' + (aid && IT[aid] ? '<img src="' + IT[aid].src + '" alt="">' : '') + '<div><b>' + SPOT_LABEL[k] + '・' + o.name + '</b><br>' + o.text + '</div></div>';
+}
+function showPartStep() {
+  const c = bs.list[bs.i].c; bs.phase = 'part';
+  $('bStep').textContent = '第一步：點客人身上的部位看看。可以多看幾個，再決定這題要看哪裡。';
+  $('bOpts').innerHTML = bs.sel ? inspectHtml(c, bs.sel) + '<button class="btn main" data-confirm="1">這題就看' + SPOT_LABEL[bs.sel] + '</button>' : '';
+  bs.looked = bs.looked || {}; if (bs.sel) bs.looked[bs.sel] = 1;
+  requestAnimationFrame(paintBooth);
 }
 $('bSpots').addEventListener('click', e => {
   const b = e.target.closest('.spot'); if (!b || bs.phase !== 'part') return;
-  bs.sel = b.dataset.p; bs.phase = 'advice'; snd.wood(); markSpots();
-  const c = bs.list[bs.i].c;
-  $('bStep').textContent = '你看的是' + SPOT_LABEL[bs.sel] + '（' + PARTS[bs.sel].options[c[bs.sel]].name + '）。第二步：給他什麼建議？';
-  $('bOpts').innerHTML = '<div class="adv">' + ADVICE.map((t, i) => '<button class="btn" data-a="' + i + '">' + t + '</button>').join('') + '</div>';
-  requestAnimationFrame(paintBooth);
+  bs.sel = b.dataset.p; snd.wood(); showPartStep();
 });
 $('bOpts').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.a !== undefined && bs.phase === 'advice') finishNormal(+b.dataset.a);
+  if (b.dataset.confirm && bs.phase === 'part' && bs.sel) {
+    const c = bs.list[bs.i].c; bs.phase = 'advice'; snd.pop();
+    $('bStep').textContent = '你決定看' + SPOT_LABEL[bs.sel] + '（' + PARTS[bs.sel].options[c[bs.sel]].name + '）。第二步：給他什麼建議？';
+    $('bOpts').innerHTML = '<div class="adv">' + ADVICE.map((t, i) => '<button class="btn" data-a="' + i + '">' + t + '</button>').join('') + '</div><button class="linkbtn" data-back="1">← 重新看部位</button>';
+    requestAnimationFrame(paintBooth);
+  }
+  else if (b.dataset.back && bs.phase === 'advice') { snd.tick(); showPartStep(); }
+  else if (b.dataset.rank) openRank();
+  else if (b.dataset.a !== undefined && bs.phase === 'advice') finishNormal(+b.dataset.a);
   else if (b.dataset.g !== undefined && bs.phase === 'guest') finishGuest(+b.dataset.g);
   else if (b.dataset.day) startDay();
   else if (b.dataset.home) { go('home'); refreshHome(); }
 });
+/* ---------- 排行榜 ---------- */
+// 街坊相士是遊戲裡的角色，讓榜上一開始就有對手；接上試算表後，其他玩家會排進來
+const NPC_RANK = [['王半仙', 168], ['柳婆婆', 121], ['阿福師', 84], ['小鐵口', 47], ['豆花伯', 22], ['新來的阿明', 6]];
+function myId() { if (!store.pid) { store.pid = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); persist(); } return store.pid; }
+function rankRows(remote) {
+  const me = {id: myId(), name: store.nick || '無名相士', rep: boothStore().rep, me: true};
+  const rows = NPC_RANK.map(n => ({name: n[0], rep: n[1], npc: true})).concat((remote || []).filter(r => r.id !== me.id).map(r => ({name: cleanName(r.name) || '無名相士', rep: +r.rep || 0})), [me]);
+  return rows.sort((a, b) => b.rep - a.rep || (a.me ? -1 : 1));
+}
+function myRank(remote) { return rankRows(remote).findIndex(r => r.me) + 1; }
+function renderRank(remote) {
+  const rows = rankRows(remote), mine = rows.findIndex(r => r.me);
+  $('rankList').innerHTML = rows.slice(0, 30).map((r, i) => '<div class="rk' + (r.me ? ' me' : '') + '"><b>' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1) + '</b><span>' + r.name + (r.npc ? '<small>街坊</small>' : r.me ? '<small>你</small>' : '') + '</span><em>' + BOOTH_LEVELS[boothLevel(r.rep)].name + '</em><i>口碑 ' + r.rep + '</i></div>').join('') +
+    (mine >= 30 ? '<div class="rk me"><b>' + (mine + 1) + '</b><span>' + rows[mine].name + '<small>你</small></span><em></em><i>口碑 ' + rows[mine].rep + '</i></div>' : '');
+}
+async function openRank() {
+  $('rankNick').value = store.nick || ''; $('rankMsg').textContent = '標「街坊」的是遊戲裡的相士。'; renderRank(); $('rankSheet').classList.add('on');
+  if (!ENDPOINT) return;
+  try { const j = await (await fetch(ENDPOINT + '?action=top')).json(); renderRank(j.rows || []); $('rankMsg').textContent = '標「街坊」的是遊戲裡的相士。目前有 ' + (j.total || 0) + ' 位玩家上榜。'; }
+  catch (e) { $('rankMsg').textContent = '線上排行榜暫時連不上，先顯示街坊相士和你。'; }
+}
+function submitScore() {
+  if (!ENDPOINT) return;
+  const b = boothStore(), body = JSON.stringify({event: 'booth_score', id: myId(), name: store.nick || '無名相士', rep: b.rep, coins: b.coins, days: b.days});
+  try { navigator.sendBeacon ? navigator.sendBeacon(ENDPOINT, body) : fetch(ENDPOINT, {method: 'POST', mode: 'no-cors', body}); } catch (e) {}
+}
+$('bRank').onclick = openRank;
+$('rankClose').onclick = () => $('rankSheet').classList.remove('on');
+$('rankSheet').addEventListener('click', e => { if (e.target.id === 'rankSheet') $('rankSheet').classList.remove('on'); });
+$('rankSave').onclick = () => { store.nick = cleanName($('rankNick').value); persist(); snd.pop(); renderRank(); submitScore(); };
 $('bNext').onclick = () => { if (bs.i < 4) { bs.i++; showCustomer(); } else endDay(); };
 $('boothBtn').onclick = () => { snd.init(); snd.bgm(true); startDay(); };
 addEventListener('resize', () => { if ($('booth').classList.contains('active') && bs && bs.i < 5) paintBooth(); });
