@@ -575,7 +575,7 @@ function loadImages() {
 }
 function faceId(c) {
   const f = PARTS.face.options[c.face].id, ci = PARTS.chin.options[c.chin].id;
-  const shape = (ci === 'double' || ci === 'cleft') ? 'base' : ci, id = 'face_' + f + '_' + shape, m = c.gender === 1 ? '_m' : '';
+  const shape = (ci === 'double' || ci === 'cleft') ? 'base' : ci, id = 'face_' + f + '_' + shape, m = '';   // 臉型男女共用，男生只換脖子和身體
   // 優先用正式圖：這個下巴還沒有正式圖時，先用同臉型的正式臉，不退回佔位圖
   for (const k of [id + m, id, 'face_' + f + '_base' + m, 'face_' + f + '_base']) if (IT[k] && !IT[k].ph) return k;
   return id;
@@ -624,8 +624,19 @@ function chinYOf(c) {
   return STRETCH_Y + (base - STRETCH_Y) * (1 + sl(c.lower, .07));
 }
 const STRETCH_Y = 560;
+// 每種臉的下巴線：每一欄最下面那個不透明的點（頭部座標），算一次就存起來
+const jawCache = {};
+function jawOf(fid) {
+  if (jawCache[fid]) return jawCache[fid];
+  const it = IT[fid], cv = mk(HC_W, 1100), x = cv.getContext('2d', {willReadFrequently: true});
+  x.drawImage(IMG[fid], it.x, it.y, it.w, it.h);
+  const d = x.getImageData(0, 0, HC_W, 1100).data, jaw = new Array(HC_W + 1).fill(-1);
+  for (let c = 0; c < HC_W; c++) for (let r = 1099; r >= 400; r--) if (d[(r * HC_W + c) * 4 + 3] > 128) { jaw[c] = r; break; }
+  jaw[HC_W] = jaw[HC_W - 1];
+  return jawCache[fid] = jaw;
+}
 function renderHead(c) {
-  const headKey = [faceId(c), c.ears, c.skin, c.chin, c.brows, c.eyes, c.nose, c.mouth, c.moles.join('.'), c.upper, c.mid, c.lower, c.browDist, c.eyeSize, c.noseWidth, c.mouthSize, c.featY, c.hair, c.bang, c.hairColor].join('|');
+  const headKey = [faceId(c), c.gender, c.ears, c.skin, c.chin, c.brows, c.eyes, c.nose, c.mouth, c.moles.join('.'), c.upper, c.mid, c.lower, c.browDist, c.eyeSize, c.noseWidth, c.mouthSize, c.featY, c.hair, c.bang, c.hairColor].join('|');
   if (cache.head === headKey) return; cache.head = headKey;
   const fid = faceId(c), fm = META.faces[fid] || {hwEar: HD.hwEar};
   const earId = 'ears_' + PARTS.ears.options[c.ears].id, earDx = (fm.hwEar || HD.hwEar) - HD.hwEar;
@@ -635,7 +646,13 @@ function renderHead(c) {
     const s = skinC.getContext('2d', {willReadFrequently: true}); s.clearRect(0, 0, HC_W, 1300); s.save(); s.translate(0, OY);
     // 脖子用頭部特寫裡的高解析度版本，墊在臉下面，接縫才不會糊
     const nk = c.gender === 1 && IT.neck_m ? 'neck_m' : 'neck_f';
-    if (IMG[nk]) { const n = IT[nk]; s.drawImage(IMG[nk], n.x, n.y + (HD.chin - STRETCH_Y) * (lowK - 1), n.w, n.h); }
+    if (IMG[nk]) {   // 脖子只畫在下巴線下面，脖子比臉寬的時候才不會在下顎旁邊冒出一截
+      const n = IT[nk], jaw = jawOf(fid), dy = (HD.chin - STRETCH_Y) * (lowK - 1);
+      s.save(); s.beginPath(); s.moveTo(0, 2000);
+      for (let x = 0; x <= HC_W; x += 4) { const j = jaw[x]; s.lineTo(x, j < 0 ? 2000 : (j > STRETCH_Y ? STRETCH_Y + (j - STRETCH_Y) * lowK : j) - 14); }
+      s.lineTo(HC_W, 2000); s.closePath(); s.clip();
+      s.drawImage(IMG[nk], n.x, n.y + dy, n.w, n.h); s.restore();
+    }
     const it = IT[fid], im = IMG[fid], ry = im.naturalHeight / it.h, hTop = STRETCH_Y - it.y;
     s.drawImage(im, 0, 0, im.naturalWidth, hTop * ry, it.x, it.y, it.w, hTop);
     s.drawImage(im, 0, hTop * ry, im.naturalWidth, (it.h - hTop) * ry, it.x, STRETCH_Y - .5, it.w, (it.h - hTop) * lowK + .5);

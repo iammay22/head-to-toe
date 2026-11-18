@@ -242,41 +242,41 @@
   "ears_flat": {
    "s": "head",
    "x": 255,
-   "y": 280,
+   "y": 386,
    "w": 514,
-   "h": 262,
+   "h": 137,
    "ph": false
   },
   "ears_fortune": {
    "s": "head",
    "x": 192,
-   "y": 280,
+   "y": 347,
    "w": 642,
-   "h": 495,
+   "h": 428,
    "ph": false
   },
   "ears_high": {
    "s": "head",
    "x": 239,
-   "y": 280,
+   "y": 369,
    "w": 547,
-   "h": 262,
+   "h": 159,
    "ph": false
   },
   "ears_protruding": {
    "s": "head",
    "x": 209,
-   "y": 280,
+   "y": 367,
    "w": 608,
-   "h": 280,
+   "h": 193,
    "ph": false
   },
   "ears_small": {
    "s": "head",
    "x": 237,
-   "y": 280,
+   "y": 370,
    "w": 551,
-   "h": 261,
+   "h": 161,
    "ph": false
   },
   "eyes_apricot": {

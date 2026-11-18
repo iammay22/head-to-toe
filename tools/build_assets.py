@@ -464,6 +464,9 @@ def process_head():
             if n:
                 sz = ndi.sum(al > .2, lab, range(1, n + 1)); big = [i + 1 for i in np.argsort(sz)[-2:]]
                 al = al * ndi.binary_dilation(np.isin(lab, big), iterations=3)
+            # 耳朵上面常連著一段原圖的頭部外框線，耳朵現在畫在臉前面會露出來：去掉細線再把耳朵外框補回
+            body = ndi.binary_opening(al > .3, structure=np.ones((3, 24), bool))   # 外框那條只有十幾點寬，耳朵本身寬很多
+            al = al * ndi.binary_dilation(body, iterations=6)
             save_layer(name, new, al, 'head')
         elif kind == 'bangs':   # 前髮：整片蓋在臉上面
             al = cut_outer(new, new_alpha, base, base_alpha)
