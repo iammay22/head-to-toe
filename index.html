@@ -98,6 +98,7 @@ details summary::after{content:'點開看 ▾';font-size:13px;font-weight:400;co
 details[open] summary::after{content:'收起 ▴'}
 .read{display:grid;grid-template-columns:5.2em 1fr;gap:4px 8px;font-size:14px;margin-top:6px}
 .read b{font-weight:600}
+.read .src{display:block;margin-top:2px;font-size:12px;opacity:.6;line-height:1.5}
 .read img{width:64px;height:64px;grid-column:1/3}
 .acts{display:flex;flex-direction:column;gap:12px;margin-top:12px;padding-bottom:6px}
 .acts .note{margin:0}.note:empty{display:none}
@@ -286,80 +287,80 @@ const FORT_NAME = ['財運', '感情', '事業', '人緣'];
 // s = [財, 情, 業, 緣] 加分
 const PARTS = {
   face: {label: '臉型', options: [
-    {id: 'oval',   name: '鵝蛋臉',   el: '鵝蛋臉', text: '各方面均衡，容易被信任', s: [1,1,0,1]},
-    {id: 'square', name: '金形方臉', el: '金形', text: '做事有決斷力，說到做到', s: [0,0,2,1]},
-    {id: 'long',   name: '木形長臉', el: '木形', text: '有理想、愛學習，越學越有料', s: [0,1,1,1]},
-    {id: 'round',  name: '水形圓臉', el: '水形', text: '圓融好相處，走到哪都有朋友', s: [1,0,0,2]},
-    {id: 'fire',   name: '火形尖臉', el: '火形', text: '反應快、點子多，熱情來得快', s: [0,2,1,0]},
-    {id: 'earth',  name: '土形厚臉', el: '土形', text: '穩重可靠，福氣越後面越厚', s: [2,0,0,1]},
+    {id: 'oval',   name: '鵝蛋臉',   el: '鵝蛋臉', text: '五官比例勻稱，各方面都不偏科，很容易讓人信任', s: [1,1,0,1], src: '古書最看重三停平均，原文說「三停平等，富貴榮顯」。'},
+    {id: 'square', name: '金形方臉', el: '金形', text: '骨架方正、個性剛毅，說到做到，做事有決斷力', s: [0,0,2,1], src: '原文說「金不嫌方」，金形人長得方正、骨頭硬、氣質剛毅。'},
+    {id: 'long',   name: '木形長臉', el: '木形', text: '瘦長挺拔，愛讀書、有理想，越到後面越亮眼', s: [0,1,1,1], src: '原文形容木形「凜凜更修長」，又說「須知晚景光」，好運在後頭。'},
+    {id: 'round',  name: '水形圓臉', el: '水形', text: '臉圓肉厚，性情圓融，福氣常常自己找上門', s: [1,0,0,2], src: '原文說水形「城廓要團圓」，這種人「平生福自然」。'},
+    {id: 'fire',   name: '火形臉', el: '火形', text: '額頭窄、下半臉寬，性子急、行動快，熱情說來就來', s: [0,2,1,0], src: '原文說「欲識火形貌，下闊上頭尖」，火形人個性急，衝勁足。'},
+    {id: 'earth',  name: '土形厚臉', el: '土形', text: '厚實穩重，講信用，心裡有盤算但不會掛在臉上', s: [2,0,0,1], src: '原文形容土形「安詳若泰山」，「信義重人間」，五行裡最被看好。'},
   ]},
   chin: {label: '下巴', options: [
-    {id: 'round',    name: '方圓厚實', text: '晚年有靠山，家庭運穩', s: [1,0,0,1]},
-    {id: 'pointed',  name: '尖下巴',   text: '想像力豐富，很有藝術感', s: [0,1,1,0]},
-    {id: 'protrude', name: '前凸下巴', text: '意志力強，不輕易放棄', s: [0,0,2,0]},
-    {id: 'double',   name: '雙下巴',   text: '有福氣，生活過得舒服', s: [2,0,0,0]},
-    {id: 'cleft',    name: '美人溝',   text: '很有魅力，讓人忘不了', s: [0,2,0,0]},
+    {id: 'round',    name: '方圓厚實', text: '下巴方圓有肉，晚年有房有靠，家裡穩', s: [1,0,0,1], src: '原文說「地閣方圓，萬頃田」，下巴寬厚代表晚年家業豐厚。'},
+    {id: 'pointed',  name: '尖下巴',   text: '下巴尖，腦袋轉得快、很有創意，晚年要早點替自己打算', s: [0,1,1,0], src: '原文說「欲知晚近事，地閣喜方高」，下巴尖的人晚運要靠自己經營。'},
+    {id: 'protrude', name: '前凸下巴', text: '下巴往前翹，意志力強，越老越有底氣', s: [1,0,1,0], src: '原文說「地閣相朝甲匱豐」，下巴朝上的人晚年財庫滿。'},
+    {id: 'double',   name: '雙下巴',   text: '下巴圓潤有肉，有福氣，身邊總有人願意幫你', s: [1,0,0,1], src: '古書說下巴「頦圓豐滿」的人「一呼百諾」，晚年有人照應。'},
+    {id: 'cleft',    name: '美人溝',   text: '很有個人魅力，讓人過目不忘', s: [0,2,0,0], src: '這本古書沒有專門講美人溝，這裡用的是現代常見說法。'},
   ]},
   brows: {label: '眉', options: [
-    {id: 'flat',     name: '一字眉', text: '個性直率，話不繞彎', s: [0,0,1,1]},
-    {id: 'sword',    name: '劍眉',   text: '有魄力，適合帶頭', s: [0,0,2,0]},
-    {id: 'willow',   name: '柳葉眉', text: '溫柔有異性緣', s: [0,2,0,0]},
-    {id: 'crescent', name: '新月眉', text: '細膩體貼，察言觀色', s: [0,1,0,1]},
-    {id: 'droop',    name: '八字眉', text: '隨和好說話，大家都想找你聊', s: [0,0,0,2]},
-    {id: 'thick',    name: '濃粗眉', text: '重義氣，會罩朋友', s: [0,0,1,1]},
-    {id: 'sparse',   name: '疏淡眉', text: '獨立自主，靠自己打出一片天', s: [1,0,1,0]},
+    {id: 'flat',     name: '一字眉', text: '眉形清楚不雜亂，人聰明，感情也穩', s: [0,1,1,0], src: '書裡說一字眉的人聰明，年紀輕就有表現，夫妻相處和順。'},
+    {id: 'sword',    name: '劍眉',   text: '有魄力、有見識，適合帶頭，小時候苦一點長大就好了', s: [0,0,2,0], src: '原文說「眉若山林秀且長，威權志識輔君王」。'},
+    {id: 'willow',   name: '柳葉眉', text: '對朋友講信用，常常遇到貴人拉一把', s: [0,0,1,1], src: '原文說「友交忠信貴人親」，又說「定須發達顯揚名」。'},
+    {id: 'crescent', name: '新月眉', text: '眉形清秀，跟兄弟姊妹感情好，一家人一起好', s: [0,1,0,1], src: '書裡把新月眉排在最好的眉形，主兄弟和睦、各自發達。'},
+    {id: 'droop',    name: '八字眉', text: '日子過得寬裕，隨和好說話，感情上比較晚才定下來', s: [1,0,0,1], src: '書裡說這種眉頭疏、尾散的人一輩子衣食無憂，只是成家比較晚。'},
+    {id: 'thick',    name: '濃粗眉', text: '重義氣，朋友有事你一定到', s: [0,0,1,1], src: '眉毛在古書裡管兄弟朋友，眉濃的人把朋友看得很重。'},
+    {id: 'sparse',   name: '疏淡眉', text: '賺得到也捨得給，對朋友大方，自己夠用就好', s: [1,0,0,1], src: '原文說疏散眉「平生財帛多興廢，不虧我用亦無餘」。'},
   ]},
   eyes: {label: '眼', options: [
-    {id: 'peach',    name: '桃花眼', text: '眼神會放電，桃花不斷', s: [0,2,0,0]},
-    {id: 'phoenix',  name: '鳳眼',   text: '有氣勢，天生的主管臉', s: [0,0,2,0]},
-    {id: 'apricot',  name: '杏眼',   text: '真誠直接，讓人放心', s: [0,0,0,2]},
-    {id: 'narrow',   name: '細長眼', text: '冷靜會觀察，理財有一套', s: [1,0,1,0]},
-    {id: 'sanpaku',  name: '三白眼', text: '主見很強，認定了就不回頭', s: [0,0,2,0]},
-    {id: 'droopy',   name: '下垂眼', text: '溫和好親近，很會照顧人', s: [0,1,0,1]},
-    {id: 'upturned', name: '上揚眼', text: '積極主動，喜歡就會說', s: [0,1,1,0]},
+    {id: 'peach',    name: '桃花眼', text: '眼神帶笑會放電，桃花不斷，遇到對的人記得收心', s: [0,2,0,0], src: '原文說桃花眼「逢人微笑目光媚」，桃花運是所有眼型裡最旺的。'},
+    {id: 'phoenix',  name: '鳳眼',   text: '眼線細長有神，聰明出眾，年紀輕輕就被看見', s: [0,0,2,0], src: '原文說鳳眼「聰明智能功名遂，拔萃超群」。'},
+    {id: 'apricot',  name: '杏眼',   text: '眼睛大、黑白分明，心思清楚，待人真誠', s: [0,0,0,2], src: '古書看眼最重「黑白分明」，眼神清楚的人心裡也清楚。'},
+    {id: 'narrow',   name: '細長眼', text: '眼睛細長、含而不露，冷靜有遠見，理財有一套', s: [1,0,1,0], src: '書裡的鶴眼、睡鳳眼都是細長眼，原文說「藏神不露顯功名」。'},
+    {id: 'sanpaku',  name: '三白眼', text: '主見很強，凡事先替自己盤算，看事情很冷靜', s: [0,0,2,0], src: '書裡說三白眼的人很看重自己的利益，這裡把它當成「很會盤算」。'},
+    {id: 'droopy',   name: '下垂眼', text: '眼神溫和、看得開，心裡不太放事情', s: [0,1,0,1], src: '書裡的象眼眼尾柔和，說這種人「仁和」，心胸寬，日子過得自在。'},
+    {id: 'upturned', name: '上揚眼', text: '眼尾往上翹，積極主動，福氣也跟著來', s: [1,1,0,0], src: '原文說「目尾朝天，福祿綿綿」。'},
   ]},
   nose: {label: '鼻', options: [
-    {id: 'gall',     name: '懸膽鼻', text: '鼻頭飽滿，守得住錢', s: [3,0,0,0]},
-    {id: 'garlic',   name: '蒜頭鼻', text: '肉多有財庫，待人大方', s: [2,0,0,1]},
-    {id: 'hook',     name: '鷹勾鼻', text: '精明會算，談判不吃虧', s: [1,0,1,0]},
-    {id: 'straight', name: '挺直鼻', text: '自尊心強，做事要求高', s: [0,0,2,0]},
-    {id: 'button',   name: '小巧鼻', text: '可愛有親和力', s: [0,1,0,1]},
-    {id: 'upturned', name: '朝天鼻', text: '大方愛請客，朋友很多', s: [0,0,0,2]},
+    {id: 'gall',     name: '懸膽鼻', text: '鼻子方正、鼻頭飽滿，中年以後財運才大開，前面先沉住氣', s: [3,0,0,0], src: '原文說懸膽鼻「富貴榮華應壯期」，好運在壯年。'},
+    {id: 'garlic',   name: '蒜頭鼻', text: '鼻頭肉多，家裡和睦，中年發達，晚年更穩', s: [2,0,0,1], src: '原文說蒜頭鼻「兄弟情久心無毒，晚景中年家必隆」。'},
+    {id: 'hook',     name: '鷹勾鼻', text: '精明會算、重實際，談判不吃虧', s: [1,0,1,0], src: '書裡說鷹勾鼻的人很看重實際利益，算盤打得很精。'},
+    {id: 'straight', name: '挺直鼻', text: '鼻子方正挺直，自尊心強，做事要求高', s: [0,0,2,0], src: '書裡說鼻子方正筆挺是貴人相。'},
+    {id: 'button',   name: '小巧鼻', text: '親和力強，錢要靠自己慢慢存', s: [0,1,0,1], src: '鼻子在古書裡是「財星」，書裡認為鼻頭小的人財要自己累積。'},
+    {id: 'upturned', name: '朝天鼻', text: '看得到鼻孔，錢不太留得住，因為你太大方了', s: [0,0,0,2], src: '書裡說鼻孔外露的人錢容易流出去，好處是朋友多。'},
   ]},
   mouth: {label: '嘴', options: [
-    {id: 'smile',  name: '嘴角上揚', text: '樂觀愛笑，帶來一團好心情', s: [0,0,0,2]},
-    {id: 'full',   name: '厚唇',     text: '重感情，對喜歡的人很專一', s: [0,2,0,0]},
-    {id: 'thin',   name: '薄唇',     text: '口才好，說話有重點', s: [0,0,2,0]},
-    {id: 'wide',   name: '大嘴',     text: '氣度大，敢接大任務', s: [1,0,1,0]},
-    {id: 'cherry', name: '櫻桃小嘴', text: '細心懂得細節', s: [1,1,0,0]},
-    {id: 'bow',    name: '菱角嘴',   text: '口福好，有吃的就有你', s: [1,0,0,1]},
+    {id: 'smile',  name: '嘴角上揚', text: '嘴角上揚像彎月，有才學，運氣也好', s: [0,0,1,1], src: '原文說仰月口「口如仰月上朝彎」，「滿腹文章聲價美」。'},
+    {id: 'full',   name: '厚唇',     text: '嘴唇厚，心地寬厚，粗中有細，一輩子衣食不愁', s: [1,1,0,0], src: '原文說牛口「雙唇厚且豐，平生衣祿更昌隆」。'},
+    {id: 'thin',   name: '薄唇',     text: '口才好、愛熱鬧，聚會少不了你', s: [0,0,1,1], src: '書裡說唇薄的人喜歡歌舞宴樂，個性外向。'},
+    {id: 'wide',   name: '大嘴',     text: '嘴大方闊，氣度大，敢接大任務', s: [1,0,1,0], src: '書裡說嘴方正闊大、像「四」字的人有大格局。'},
+    {id: 'cherry', name: '櫻桃小嘴', text: '小嘴有靈氣，聰明細心，笑起來討人喜歡', s: [0,1,1,0], src: '原文說櫻桃口「笑若含情運和暢，聰明拔萃」。'},
+    {id: 'bow',    name: '菱角嘴',   text: '口福好，有吃的就有你', s: [1,0,0,1], src: '這本古書沒有專門講菱角嘴，這裡用的是現代常見說法。'},
   ]},
   ears: {label: '耳', options: [
-    {id: 'flat',       name: '貼腦耳', text: '低調穩健，默默打拼', s: [1,0,0,1]},
-    {id: 'fortune',    name: '福耳',   text: '福氣滿滿，貴人多', s: [2,0,0,1]},
-    {id: 'protruding', name: '招風耳', text: '有主見，不跟風', s: [0,0,2,0]},
-    {id: 'high',       name: '高位耳', text: '聰明早發，很早就被看見', s: [0,0,2,0]},
-    {id: 'small',      name: '小耳',   text: '心思細，感受力強', s: [0,2,0,0]},
+    {id: 'flat',       name: '貼腦耳', text: '耳朵貼著頭長，低調有才，身邊的人都沾你的光', s: [0,0,1,1], src: '原文說「兩耳貼腦輪廓堅」是「高賢」，親友都跟著享福。'},
+    {id: 'fortune',    name: '福耳',   text: '耳垂厚又大，福氣滿滿，錢跟壽都有', s: [2,0,0,1], src: '原文說「垂珠朝口者，主財壽」，「耳門垂厚，富貴長久」。'},
+    {id: 'protruding', name: '招風耳', text: '耳朵往前張，有主見不跟風，花錢比較衝', s: [0,0,1,1], src: '書裡說耳朵往前張的人守財比較難，錢最好找人幫忙管。'},
+    {id: 'high',       name: '高位耳', text: '耳朵位置高，聰明早發，很早就被看見', s: [1,0,1,0], src: '原文說「耳高於目，會受師祿」，「高眉二寸，永不貧困」。'},
+    {id: 'small',      name: '小耳',   text: '耳朵小巧，有威嚴，跟人保持一點距離', s: [0,0,2,0], src: '書裡說耳小、從正面看不太到的人有威儀，不過心思比較深。'},
   ]},
   shoulder: {label: '肩', options: [
-    {id: 'level', name: '平肩', text: '平穩均衡', s: [1,0,0,1]},
-    {id: 'wide',  name: '寬肩', text: '有擔當，扛得起責任', s: [0,0,2,0]},
-    {id: 'slope', name: '溜肩', text: '溫柔細膩', s: [0,2,0,0]},
+    {id: 'level', name: '平肩', text: '肩膀平穩，做人做事都很均衡', s: [1,0,0,1], src: '古書看身形重端正匀稱，肩平身正是好相。'},
+    {id: 'wide',  name: '寬肩', text: '肩寬胸廣，有擔當，扛得起責任', s: [0,0,2,0], src: '書裡把「肩寬臍厚，胸前平廣」算在「形有餘」，是有福的身形。'},
+    {id: 'slope', name: '溜肩', text: '肩膀柔，不愛硬碰硬，懂得借力使力', s: [0,1,0,1], src: '書裡說肩膀窄斜的人要懂得保留體力，凡事別一個人硬扛。'},
   ]},
   hand: {label: '手', options: [
-    {id: 'soft',    name: '手掌厚軟', text: '握得住錢', s: [2,0,0,0]},
-    {id: 'slender', name: '手指修長', text: '有藝術天分', s: [0,1,1,0]},
-    {id: 'square',  name: '手掌方正', text: '務實肯做', s: [0,0,2,0]},
-    {id: 'small',   name: '手小巧',   text: '靈巧會照顧人', s: [0,1,0,1]},
+    {id: 'soft',    name: '手掌厚軟', text: '手掌厚又軟，握得住錢', s: [2,0,0,0], src: '原文說「手端厚者富」，「掌長而厚者貴」。'},
+    {id: 'slender', name: '手指修長', text: '手指修長，聰明心軟，樂於分享', s: [0,0,1,1], src: '原文說手「纖長者，其性慈而好施」，「指尖而長者聰俊」。'},
+    {id: 'square',  name: '手掌方正', text: '手掌方正，務實又有頭腦', s: [0,0,2,0], src: '原文說「掌軟而方者智」。'},
+    {id: 'small',   name: '手小巧',   text: '手小巧，靈巧會照顧人，日子過得清爽', s: [0,1,0,1], src: '書裡說手比身形小的人不追求大富大貴，生活清淡自在。'},
   ]},
 };
 const MOLES = [
-  {id: 'brow',  name: '眉中', text: '草裡藏珠，有藏著的才華，遇到機會就發光', s: [0,0,1,0]},
-  {id: 'tear',  name: '眼尾下', text: '淚痣，感性浪漫，容易心動', s: [0,1,0,0]},
-  {id: 'nose',  name: '鼻頭', text: '財運加持', s: [1,0,0,0]},
-  {id: 'mouth', name: '嘴角', text: '食祿痣，口福好，人緣也好', s: [0,0,0,1]},
-  {id: 'chin',  name: '下巴', text: '有置產運', s: [1,0,0,0]},
-  {id: 'lobe',  name: '耳垂', text: '福氣跟著你走', s: [0,0,0,1]},
+  {id: 'brow',  name: '眉中', text: '草裡藏珠，聰明又有藏著的才華', s: [0,0,1,0], src: '書裡說眉中有痣主富貴，人聰明。'},
+  {id: 'tear',  name: '眼尾下', text: '淚痣，感情豐富，容易為人掉眼淚', s: [0,1,0,0], src: '眼下是「淚堂」，古書用來看感情和子女。'},
+  {id: 'nose',  name: '鼻頭', text: '錢來得快也去得快，花錢前想一下', s: [1,0,0,0], src: '鼻子是財星，書裡提醒鼻上有痣要多注意錢的進出。'},
+  {id: 'mouth', name: '嘴角', text: '很會聊天，人緣好，話別說太滿', s: [0,0,0,1], src: '書裡說口中有痣主酒食，口角的痣要留意工作上的變動。'},
+  {id: 'chin',  name: '下巴', text: '很戀家，買東西前多想一下', s: [1,0,0,0], src: '書裡說嘴唇下方有痣的人花錢要節制。'},
+  {id: 'lobe',  name: '耳垂', text: '耳垂有痣，存得住錢', s: [1,0,0,0], src: '原文說耳痣「耳珠主財」。'},
 ];
 const SLIDERS = [
   {id: 'upper',     name: '額頭高度', hint: '上停', tab: 'ratio'},
@@ -500,8 +501,8 @@ function checkCopy() {
     ...Object.values(SUMMARY).flatMap(o => Object.values(o)), ...Object.values(TITLES).flat(),
     ...BOOTH_Q.flat(), ...Object.values(BOOTH_Q2), ...ADVICE, ...ADV_WHY, ...BOOTH_GOOD, ...BOOTH_LEVELS.map(l => l.name), ...GUESTS.flatMap(g => [g.name, g.line, g.good, g.bad, g.dex, ...g.opts]),
     ...NPC_RANK.map(n => n[0]), ...CLOTHES.map(x => x.label),
-    ...MOLES.map(m => m.name + m.text), ...HIDDEN.map(h => h.name + h.hint + h.text), ...Object.values(LIUNIAN).flatMap(o => Object.values(o)),
-    ...PAIR_TITLES.flatMap(t => Object.values(t[1])), ...QUIPS, ...Object.values(RUB), ...Object.values(PAIR_TEXT).filter(v => typeof v === 'string'), ...Object.values(PAIR_TEXT.egg), ...Object.values(PARTS).flatMap(p => p.options.map(o => o.name + o.text))];
+    ...MOLES.map(m => m.name + m.text + (m.src || '')), ...HIDDEN.map(h => h.name + h.hint + h.text), ...Object.values(LIUNIAN).flatMap(o => Object.values(o)),
+    ...PAIR_TITLES.flatMap(t => Object.values(t[1])), ...QUIPS, ...Object.values(RUB), ...Object.values(PAIR_TEXT).filter(v => typeof v === 'string'), ...Object.values(PAIR_TEXT.egg), ...Object.values(PARTS).flatMap(p => p.options.map(o => o.name + o.text + (o.src || '')))];
   let bad = 0;
   for (const t of all) for (const b of BANNED) if (t.includes(b)) { console.error('文案出現禁用詞「' + b + '」：' + t); bad++; }
   return bad;
@@ -937,8 +938,8 @@ function showResult() {
   $('rLuck').innerHTML = FORT_NAME.map((n, i) => '<b>' + n + '</b><span class="st">' + starStr(r.stars[i]) + '</span><span class="tx">' + LUCK_TEXT[i][r.stars[i] - 1] + '</span>').join('');
   $('rPeriod').textContent = PERIOD_TEXT[r.period];
   let rows = '';
-  for (const k in PARTS) { const o = PARTS[k].options[ch[k]]; rows += '<b>' + o.name + '</b><span>' + o.text + '</span>'; }
-  for (const id of ch.moles) { const m = MOLES.find(x => x.id === id); rows += '<b>' + m.name + '的痣</b><span>' + m.text + '</span>'; }
+  for (const k in PARTS) { const o = PARTS[k].options[ch[k]]; rows += '<b>' + o.name + '</b><span>' + o.text + (o.src ? '<small class="src">' + o.src + '</small>' : '') + '</span>'; }
+  for (const id of ch.moles) { const m = MOLES.find(x => x.id === id); rows += '<b>' + m.name + '的痣</b><span>' + m.text + (m.src ? '<small class="src">' + m.src + '</small>' : '') + '</span>'; }
   for (const n of r.notes) rows += '<b>' + n[0] + '</b><span>' + n[1] + '</span>';
   $('rRead').innerHTML = rows; $('rJoke').textContent = JOKE;
   const card = makeCard(r);
