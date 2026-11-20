@@ -225,6 +225,8 @@ def save_layer(id_, rgb, alpha, space, extra=None, quality=92):
 
 FY = (lambda y: y, 1.0)
 HAIR_RAW = {}
+RATIO = {}
+MISS_T = 0.3   # 外框缺超過三成才重畫（正常的臉大約 0.15～0.25）
 ALIGN_FACES = {'face_earth', 'face_fire'}   # 這幾張是後來另外畫的，頭的大小跟標準頭不同，要先對齊
 
 
@@ -416,10 +418,37 @@ def process_head():
             if nk: save_layer('neck_m', nk[0], nk[1], 'head')
         elif kind == 'face':
             parts = name.split('_')
-            id_ = f'face_{parts[1]}_{parts[3] if len(parts) > 3 else "base"}'
+            if parts[-1] == 'm':   # 男生的臉型：face_<臉型>_m.jpg，畫在男生標準頭上，不用對齊
+                id_ = f'face_{parts[1]}_base_m'
+            else:
+                id_ = f'face_{parts[1]}_{parts[3] if len(parts) > 3 else "base"}'
             hm, fc = head_mask(new, new_alpha, seed, 12)
             fy = np.where(fc)[0]
-            save_layer(id_, new, new_alpha * soft(hm), 'head', dict(chinY=int(fy.max()) + 7))
+            al = new_alpha * soft(hm)
+            # 有些圖去背時把頭頂的外框線一起吃掉了（缺超過 MISS_T）：把頭的邊緣磨平，重畫一圈一樣粗的外框
+            m = al > .5
+            ring = m & ~ndi.binary_erosion(m, iterations=3)
+            dark = ring & (lum(new) < 110)
+            if dark.sum() > 50 and (ring & (lum(new) >= 110)).sum() > MISS_T * ring.sum():
+                lc = np.median(new[dark], axis=0)
+                m2 = ndi.binary_opening(m, iterations=3)
+                # 頭頂是凸的：眼睛以上直接用凸包補平缺口；眼睛以下不動，免得把下巴和脖子的凹處填掉
+                from scipy.spatial import ConvexHull
+                from PIL import ImageDraw
+                ys_, xs_ = np.where(m2[:450])
+                pts = np.c_[xs_, ys_]
+                hull = pts[ConvexHull(pts).vertices]
+                hm_img = Image.new('L', (HS, HS), 0); ImageDraw.Draw(hm_img).polygon([tuple(p) for p in hull], fill=1)
+                hullm = np.asarray(hm_img).astype(bool)
+                m2[:440] = hullm[:440] | m2[:440]
+                ms = ndi.gaussian_filter(ndi.binary_closing(m2, iterations=3).astype(np.float32), 2.5) > .5
+                ring = ms & ~ndi.binary_erosion(ms, iterations=5)
+                new = np.where(ring[..., None], lc, new)
+                al = ndi.gaussian_filter(ms.astype(np.float32), .8)
+                new = np.where((ms & ~ring)[..., None] & (new_alpha < .5)[..., None], np.array(SKIN, float), new)   # 補進來的地方填皮膚色
+                LOG.append(f'   {id_}: 外框缺了一段，已重畫')
+            RATIO[id_] = round(float((ring & (lum(new) >= 110)).sum() / max(ring.sum(), 1)), 3)
+            save_layer(id_, new, al, 'head', dict(chinY=int(fy.max()) + 7))
         elif kind == 'chinmark':   # 雙下巴、美人溝：只取下巴附近比皮膚暗的線條和陰影，位置記成相對下巴
             _, fc = head_mask(new, new_alpha, seed, 12)
             ys = np.where(fc.any(1))[0]; chin = int(ys.max())

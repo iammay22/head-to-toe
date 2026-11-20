@@ -150,12 +150,12 @@
   },
   "face_oval_base_m": {
    "s": "head",
-   "x": 266,
-   "y": 49,
-   "w": 493,
-   "h": 722,
+   "x": 270,
+   "y": 37,
+   "w": 485,
+   "h": 712,
    "ph": false,
-   "chinY": 762
+   "chinY": 740
   },
   "neck_m": {
    "s": "head",
@@ -344,6 +344,24 @@
    "ph": false,
    "chinY": 756
   },
+  "face_earth_base_m": {
+   "s": "head",
+   "x": 239,
+   "y": 37,
+   "w": 547,
+   "h": 734,
+   "ph": false,
+   "chinY": 762
+  },
+  "face_fire_base_m": {
+   "s": "head",
+   "x": 211,
+   "y": 48,
+   "w": 603,
+   "h": 757,
+   "ph": false,
+   "chinY": 798
+  },
   "face_long_base": {
    "s": "head",
    "x": 282,
@@ -352,6 +370,15 @@
    "h": 695,
    "ph": false,
    "chinY": 735
+  },
+  "face_long_base_m": {
+   "s": "head",
+   "x": 279,
+   "y": 37,
+   "w": 468,
+   "h": 712,
+   "ph": false,
+   "chinY": 740
   },
   "face_oval_pointed": {
    "s": "head",
@@ -380,6 +407,15 @@
    "ph": false,
    "chinY": 731
   },
+  "face_round_base_m": {
+   "s": "head",
+   "x": 239,
+   "y": 37,
+   "w": 547,
+   "h": 749,
+   "ph": false,
+   "chinY": 777
+  },
   "face_square_base": {
    "s": "head",
    "x": 274,
@@ -388,6 +424,15 @@
    "h": 685,
    "ph": false,
    "chinY": 727
+  },
+  "face_square_base_m": {
+   "s": "head",
+   "x": 270,
+   "y": 36,
+   "w": 486,
+   "h": 722,
+   "ph": false,
+   "chinY": 749
   },
   "mouth_bow": {
    "s": "head",

@@ -294,6 +294,7 @@ const PARTS = {
     {id: 'fire',   name: '火形臉', el: '火形', text: '額頭窄、下半臉寬，性子急、行動快，熱情說來就來', s: [0,2,1,0], src: '原文說「欲識火形貌，下闊上頭尖」，火形人個性急，衝勁足。'},
     {id: 'earth',  name: '土形厚臉', el: '土形', text: '厚實穩重，講信用，心裡有盤算但不會掛在臉上', s: [2,0,0,1], src: '原文形容土形「安詳若泰山」，「信義重人間」，五行裡最被看好。'},
   ]},
+  /* 下巴暫時停用（2026-11-21），之後要用再打開；合盤連結裡的位置保留著
   chin: {label: '下巴', options: [
     {id: 'round',    name: '方圓厚實', text: '下巴方圓有肉，晚年有房有靠，家裡穩', s: [1,0,0,1], src: '原文說「地閣方圓，萬頃田」，下巴寬厚代表晚年家業豐厚。'},
     {id: 'pointed',  name: '尖下巴',   text: '下巴尖，腦袋轉得快、很有創意，晚年要早點替自己打算', s: [0,1,1,0], src: '原文說「欲知晚近事，地閣喜方高」，下巴尖的人晚運要靠自己經營。'},
@@ -301,6 +302,7 @@ const PARTS = {
     {id: 'double',   name: '雙下巴',   text: '下巴圓潤有肉，有福氣，身邊總有人願意幫你', s: [1,0,0,1], src: '古書說下巴「頦圓豐滿」的人「一呼百諾」，晚年有人照應。'},
     {id: 'cleft',    name: '美人溝',   text: '很有個人魅力，讓人過目不忘', s: [0,2,0,0], src: '這本古書沒有專門講美人溝，這裡用的是現代常見說法。'},
   ]},
+  */
   brows: {label: '眉', options: [
     {id: 'flat',     name: '一字眉', text: '眉形清楚不雜亂，人聰明，感情也穩', s: [0,1,1,0], src: '書裡說一字眉的人聰明，年紀輕就有表現，夫妻相處和順。'},
     {id: 'sword',    name: '劍眉',   text: '有魄力、有見識，適合帶頭，小時候苦一點長大就好了', s: [0,0,2,0], src: '原文說「眉若山林秀且長，威權志識輔君王」。'},
@@ -452,7 +454,7 @@ const CLOTHES = [{id: 'top', label: '上半身', items: TOPS}, {id: 'bottom', la
   {id: 'dress', label: '連身', items: []}, {id: 'shoes', label: '鞋子', items: []}, {id: 'acc', label: '配件', items: []}];
 let clothTab = 'top';
 const TABS = [
-  ['gender', '性別', 'full'],  ['face', '臉型', 'head'], ['chin', '下巴', 'head'], ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
+  ['gender', '性別', 'full'],  ['face', '臉型', 'head'], /* ['chin', '下巴', 'head'], */ ['brows', '眉', 'head'], ['eyes', '眼', 'head'],
   ['nose', '鼻', 'head'], ['mouth', '嘴', 'head'], ['ears', '耳', 'head'], ['moles', '痣', 'head'],
   ['ratio', '比例', 'head'], ['hair', '髮型', 'head'], ['skin', '膚色', 'full'], ['body', '身體', 'full'], ['hand', '手', 'hand'], ['clothes', '服裝', 'full'],
 ];
@@ -575,10 +577,10 @@ function loadImages() {
   })));
 }
 function faceId(c) {
-  const f = PARTS.face.options[c.face].id, ci = PARTS.chin.options[c.chin].id;
-  const shape = (ci === 'double' || ci === 'cleft') ? 'base' : ci, id = 'face_' + f + '_' + shape, m = '';   // 臉型男女共用，男生只換脖子和身體
+  // 下巴停用中，所以只看臉型；男生有自己的臉型圖就用男生的
+  const f = PARTS.face.options[c.face].id, id = 'face_' + f + '_base', m = c.gender === 1 ? '_m' : '';
   // 優先用正式圖：這個下巴還沒有正式圖時，先用同臉型的正式臉，不退回佔位圖
-  for (const k of [id + m, id, 'face_' + f + '_base' + m, 'face_' + f + '_base']) if (IT[k] && !IT[k].ph) return k;
+  for (const k of [id + m, id, 'face_oval_base' + m, 'face_oval_base']) if (IT[k] && !IT[k].ph) return k;
   return id;
 }
 function recolorSkin(d, target, lo = 95, span = 55, loose = false) {
@@ -670,7 +672,7 @@ function renderHead(c) {
     cache.ear = earKey;
   }
   const h = headC.getContext('2d'); h.clearRect(0, 0, HC_W, HC_H); h.drawImage(skinC, 0, 0, HC_W, 1300, 0, 0, HC_W, 1300); h.save(); h.translate(0, OY);
-  const chinY = chinYOf(c), cid = PARTS.chin.options[c.chin].id;
+  const chinY = chinYOf(c), cid = PARTS.chin ? PARTS.chin.options[c.chin || 0].id : '';
   if (cid === 'double' || cid === 'cleft') { const m = IT['chinmark_' + cid]; h.drawImage(IMG['chinmark_' + cid], m.x, m.y + chinY, m.w, m.h); }
   const eyeDy = sl(c.upper, 22) + fy;
   // 眼睛圖層邊緣帶一點原本的膚色和腮紅，跟著膚色一起換（只動亮的部分，不動瞳孔和眼線）
@@ -867,7 +869,9 @@ function renderPanel() {
   const p = $('panel'); let h = '';
   if (tab === 'gender') h = '<div class="note">性別只改變身形和脖子，不影響看相結果。</div><div class="grid" style="grid-template-columns:repeat(2,1fr)">' + GENDERS.map((g, i) => '<button class="opt' + (ch.gender === i ? ' on' : '') + '" data-k="gender" data-i="' + i + '"><span style="font-size:17px">' + g + '</span></button>').join('') + '</div>';
   else if (tab === 'face') h = optGrid('face', o => 'face_' + o.id + '_base');
+  /* 下巴停用中
   else if (tab === 'chin') h = optGrid('chin', o => { if (o.id === 'double' || o.id === 'cleft') return 'chinmark_' + o.id; const k = 'face_' + PARTS.face.options[ch.face].id + '_' + o.id; return IT[k] ? k : 'face_oval_' + o.id; });
+  */
   else if (['brows', 'eyes', 'nose', 'mouth', 'ears'].includes(tab)) h = optGrid(tab, o => tab + '_' + o.id);
   else if (tab === 'moles') h = '<div class="note">最多選 3 顆，再點一次可以拿掉。</div><div class="grid">' + MOLES.map(m => '<button class="opt' + (ch.moles.includes(m.id) ? ' on' : '') + '" data-mole="' + m.id + '"><span>' + m.name + '</span></button>').join('') + '</div>';
   else if (tab === 'ratio') h = '<div class="note">額頭、鼻子、下巴三段叫「三停」，哪一段最長，就看哪個時期最旺。</div>' + sliderRows('ratio');
@@ -1050,8 +1054,8 @@ const HIDDEN = [
    test: c => op(c, 'brows') === 'sword' && op(c, 'eyes') === 'phoenix' && op(c, 'shoulder') === 'wide'},
   {id: 'blossom',  name: '桃花滿開', hint: '眼睛底下藏了什麼',     text: '桃花眼加上淚痣，走在路上都會有人回頭。',
    test: c => op(c, 'eyes') === 'peach' && c.moles.includes('tear') && (op(c, 'brows') === 'willow' || op(c, 'mouth') === 'full')},
-  {id: 'fortune',  name: '福祿壽全', hint: '耳、鼻、下巴都要有肉', text: '耳朵、鼻頭、下巴都厚，古書說的福相就是這樣。',
-   test: c => op(c, 'ears') === 'fortune' && ['gall', 'garlic'].includes(op(c, 'nose')) && ['double', 'round'].includes(op(c, 'chin'))},
+  {id: 'fortune',  name: '福祿壽全', hint: '耳、鼻、臉都要有肉', text: '耳朵、鼻頭、臉都厚實，古書說的福相就是這樣。',
+   test: c => op(c, 'ears') === 'fortune' && ['gall', 'garlic'].includes(op(c, 'nose')) && ['round', 'earth'].includes(op(c, 'face'))},   // 原本看下巴（雙下巴、方圓），下巴停用後改看臉型
   {id: 'strategist', name: '軍師之相', hint: '會算、會看、會說',   text: '細長眼看得遠，鷹勾鼻算得精，薄唇講得清楚。',
    test: c => op(c, 'eyes') === 'narrow' && op(c, 'nose') === 'hook' && op(c, 'mouth') === 'thin'},
   {id: 'moon',     name: '眾星拱月', hint: '笑起來全場都放鬆',     text: '笑起來的時候，旁邊的人會不自覺跟著笑。',
@@ -1357,7 +1361,8 @@ function saveCanvas(cv, name, kind) {
 let dexTab = 'parts';
 const DEX_ASSET = {face: o => 'face_' + o.id + '_base', brows: o => 'brows_' + o.id, eyes: o => 'eyes_' + o.id, nose: o => 'nose_' + o.id,
   mouth: o => 'mouth_' + o.id, ears: o => 'ears_' + o.id, hand: o => 'hand_' + o.id,
-  chin: o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_oval_' + o.id};
+  // chin: o => (o.id === 'double' || o.id === 'cleft') ? 'chinmark_' + o.id : 'face_oval_' + o.id,   // 下巴停用中
+};
 function renderDex() {
   const seen = new Set(store.seen || []), got = new Set(store.titles || []);
   let h = '';
@@ -1458,7 +1463,7 @@ const BOOTH_Q2 = {
 const ADVICE = ['放手去做', '換個方式', '再等等'];
 const ADV_WHY = ['底氣夠，可以放手去做。', '不上不下，換個方式比較穩。', '還在累積，先等等再說。'];
 const BOOTH_GOOD = ['師傅真準！我回去就照辦。', '難怪大家都說這攤準，謝謝師傅！', '聽你這樣說我就放心了。'];
-const SPOT_KEYS = ['face', 'chin', 'brows', 'eyes', 'nose', 'mouth', 'ears', 'shoulder', 'hand'];
+const SPOT_KEYS = ['face', /* 'chin', */ 'brows', 'eyes', 'nose', 'mouth', 'ears', 'shoulder', 'hand'];
 const SPOT_LABEL = {face: '臉型', chin: '下巴', brows: '眉', eyes: '眼', nose: '鼻', mouth: '嘴', ears: '耳', shoulder: '肩', hand: '手'};
 const GUESTS = [
   {id: 'ex', lvl: 0, name: '帶著前任照片的人', prop: '🖼️', look: {eyes: 5, mouth: 1, hair: 3},
