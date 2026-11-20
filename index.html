@@ -1163,7 +1163,7 @@ function pairScore(a, b, na, nb, rel) {
   if (jx.weak === jy.main) { part.comp += 10; hi.push([1, PAIR_TEXT.complement(ny, FORT_NAME[jy.main], nx)]); }
   if (jy.weak === jx.main) { part.comp += 10; hi.push([1, PAIR_TEXT.complement(nx, FORT_NAME[jx.main], ny)]); }
   // 共同點
-  const same = ENC_PARTS.slice(0, 7).filter(k => x[k] === y[k]);
+  const same = ENC_PARTS.slice(0, 7).filter(k => PARTS[k] && x[k] === y[k]);   // 停用中的欄位（下巴）不算
   part.common = Math.min(16, same.length * 4);
   if (same.length) hi.push([3, PAIR_TEXT.common(PARTS[same[0]].options[x[same[0]]].name)]);
   // 彩蛋
